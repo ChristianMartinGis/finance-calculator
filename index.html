@@ -1870,13 +1870,47 @@ async function fetchNBPRates() {
 let pricesFetching = false;
 
 async function fetchYahooPrice(ticker) {
-  // Try multiple free sources in order — each has different CORS behaviour
+  const tl = ticker.toLowerCase();
 
-  // ── Source 1: Yahoo Finance via allorigins CORS proxy ──
+  // ── Source 1: Stooq with .us suffix (confirmed working for US stocks) ──
+  try {
+    const res = await fetch(`https://stooq.com/q/l/?s=${encodeURIComponent(tl)}.us&f=sd2t2ohlcv&h&e=json`);
+    if (res.ok) {
+      const data = await res.json();
+      const price = parseFloat(data?.symbols?.[0]?.close);
+      if (!isNaN(price) && price > 0) return { price, currency: 'USD' };
+    }
+  } catch(e) {}
+
+  // ── Source 2: Stooq with .pl suffix (Polish stocks like PKN) ──
+  try {
+    const res = await fetch(`https://stooq.com/q/l/?s=${encodeURIComponent(tl)}.pl&f=sd2t2ohlcv&h&e=json`);
+    if (res.ok) {
+      const data = await res.json();
+      const price = parseFloat(data?.symbols?.[0]?.close);
+      if (!isNaN(price) && price > 0) return { price, currency: 'PLN' };
+    }
+  } catch(e) {}
+
+  // ── Source 3: corsproxy.io → Yahoo Finance ──
   try {
     const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`;
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`;
-    const res = await fetch(proxyUrl);
+    const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`);
+    if (res.ok) {
+      const data = await res.json();
+      const meta = data?.chart?.result?.[0]?.meta;
+      if (meta) {
+        const price = meta.regularMarketPrice ?? meta.previousClose ?? null;
+        const currency = (meta.currency || 'USD').toUpperCase();
+        if (price !== null) return { price, currency };
+      }
+    }
+  } catch(e) {}
+
+  // ── Source 4: allorigins → Yahoo Finance ──
+  try {
+    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`;
+    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`);
     if (res.ok) {
       const wrapper = await res.json();
       const data = JSON.parse(wrapper.contents);
@@ -1887,35 +1921,7 @@ async function fetchYahooPrice(ticker) {
         if (price !== null) return { price, currency };
       }
     }
-  } catch(e) { /* try next */ }
-
-  // ── Source 2: Stooq (no key, CORS-friendly, US stocks) ──
-  try {
-    const res = await fetch(`https://stooq.com/q/l/?s=${encodeURIComponent(ticker.toLowerCase())}.us&f=sd2t2ohlcv&h&e=json`);
-    if (res.ok) {
-      const data = await res.json();
-      const price = parseFloat(data?.symbols?.[0]?.close);
-      if (!isNaN(price) && price > 0) return { price, currency: 'USD' };
-    }
-  } catch(e) { /* try next */ }
-
-  // ── Source 3: Yahoo Finance direct (works on some networks) ──
-  try {
-    const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`;
-    const res = await fetch(url, {
-      headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' },
-      mode: 'cors'
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const meta = data?.chart?.result?.[0]?.meta;
-      if (meta) {
-        const price = meta.regularMarketPrice ?? meta.previousClose ?? null;
-        const currency = (meta.currency || 'USD').toUpperCase();
-        if (price !== null) return { price, currency };
-      }
-    }
-  } catch(e) { /* all sources failed */ }
+  } catch(e) {}
 
   return null;
 }
