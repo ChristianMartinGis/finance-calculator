@@ -1874,14 +1874,14 @@ let pricesFetching = false;
 // ── STOCK PRICE API ───────────────────────────────
 const AV_KEY          = '7178J87IF4WBVN6M';
 const AV_DAILY_LIMIT  = 25;
-const AV_COUNT_KEY    = 'fc_av_count'; // {date:'YYYY-MM-DD', count:0}
+const AV_COUNT_KEY    = 'fc_av_count';
 
 function avTodayCount() {
   try {
     const stored = JSON.parse(localStorage.getItem(AV_COUNT_KEY) || '{}');
     const today  = new Date().toISOString().slice(0,10);
     if (stored.date === today) return stored.count || 0;
-    return 0; // new day — reset
+    return 0;
   } catch { return 0; }
 }
 
@@ -1913,18 +1913,24 @@ async function fetchYahooPrice(ticker) {
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        const quote = data?.['Global Quote'];
-        const price = parseFloat(quote?.['05. price']);
-        if (!isNaN(price) && price > 0) {
-          avIncrementCount();
-          return { price, currency: 'USD' };
+
+        // Detect rate limit or API info messages — don't count these as used requests
+        if (data?.Note || data?.Information || data?.['Error Message']) {
+          console.warn('Alpha Vantage limit/error:', data?.Note || data?.Information || data?.['Error Message']);
+          // Fall through to Stooq without incrementing counter
+        } else {
+          const quote = data?.['Global Quote'];
+          const price = parseFloat(quote?.['05. price']);
+          if (!isNaN(price) && price > 0) {
+            avIncrementCount();
+            return { price, currency: 'USD' };
+          }
         }
-        // Note: AV returns empty Global Quote for unknown tickers — don't increment
       }
     } catch(e) {}
   }
 
-  // ── Source 2: Stooq .us (fallback for US, no key needed) ──
+  // ── Source 2: Stooq .us (US stocks fallback) ──
   try {
     const res = await fetch(`https://stooq.com/q/l/?s=${encodeURIComponent(tl)}.us&f=sd2t2ohlcv&h&e=json`);
     if (res.ok) {
@@ -1995,7 +2001,6 @@ async function refreshAllPrices() {
       const { price, currency } = result;
       priceInput.value = price.toFixed(4);
 
-      // Auto-update currency badge
       if (badge) {
         badge.textContent = currency;
         badge.className = 'curr-badge ' + (currency === 'EUR' ? 'eur' : currency === 'USD' ? 'usd' : 'pln');
