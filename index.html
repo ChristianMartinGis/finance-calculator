@@ -585,6 +585,7 @@
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <div class="card-title" style="margin-bottom:0;">Stock Portfolio</div>
           <div style="display:flex;align-items:center;gap:8px;">
+            <span id="av-counter" style="font-size:9px;color:var(--text3);"></span>
             <span id="price-updated-ts" style="font-size:9px;color:var(--text3);"></span>
             <button class="btn btn-ghost" id="refresh-prices-btn" onclick="refreshAllPrices()" style="font-size:10px;padding:4px 10px;display:flex;align-items:center;gap:4px;">
               <span id="refresh-icon">↻</span> Refresh Prices
@@ -1805,6 +1806,7 @@ window.addEventListener('DOMContentLoaded', () => {
   GOAL_PRESETS.forEach(p => addGoal(p));
   initExpenseTracker();
   recalcAll();
+  updateAvCounter();
   fetchNBPRates().then(() => setTimeout(refreshAllPrices, 400));
   initPWA();
 });
@@ -1869,10 +1871,60 @@ async function fetchNBPRates() {
 
 let pricesFetching = false;
 
+// ── STOCK PRICE API ───────────────────────────────
+const AV_KEY          = '7178J87IF4WBVN6M';
+const AV_DAILY_LIMIT  = 25;
+const AV_COUNT_KEY    = 'fc_av_count'; // {date:'YYYY-MM-DD', count:0}
+
+function avTodayCount() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(AV_COUNT_KEY) || '{}');
+    const today  = new Date().toISOString().slice(0,10);
+    if (stored.date === today) return stored.count || 0;
+    return 0; // new day — reset
+  } catch { return 0; }
+}
+
+function avIncrementCount() {
+  try {
+    const today = new Date().toISOString().slice(0,10);
+    const count = avTodayCount() + 1;
+    localStorage.setItem(AV_COUNT_KEY, JSON.stringify({ date: today, count }));
+    updateAvCounter();
+  } catch {}
+}
+
+function updateAvCounter() {
+  const used = avTodayCount();
+  const el   = document.getElementById('av-counter');
+  if (!el) return;
+  const remaining = AV_DAILY_LIMIT - used;
+  el.textContent  = `${used}/${AV_DAILY_LIMIT} price requests today`;
+  el.style.color  = remaining <= 5 ? 'var(--orange)' : remaining === 0 ? 'var(--negative)' : 'var(--text3)';
+}
+
 async function fetchYahooPrice(ticker) {
   const tl = ticker.toLowerCase();
 
-  // ── Source 1: Stooq with .us suffix (confirmed working for US stocks) ──
+  // ── Source 1: Alpha Vantage (primary — reliable, free, 25/day) ──
+  if (avTodayCount() < AV_DAILY_LIMIT) {
+    try {
+      const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(ticker)}&apikey=${AV_KEY}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        const quote = data?.['Global Quote'];
+        const price = parseFloat(quote?.['05. price']);
+        if (!isNaN(price) && price > 0) {
+          avIncrementCount();
+          return { price, currency: 'USD' };
+        }
+        // Note: AV returns empty Global Quote for unknown tickers — don't increment
+      }
+    } catch(e) {}
+  }
+
+  // ── Source 2: Stooq .us (fallback for US, no key needed) ──
   try {
     const res = await fetch(`https://stooq.com/q/l/?s=${encodeURIComponent(tl)}.us&f=sd2t2ohlcv&h&e=json`);
     if (res.ok) {
@@ -1882,44 +1934,13 @@ async function fetchYahooPrice(ticker) {
     }
   } catch(e) {}
 
-  // ── Source 2: Stooq with .pl suffix (Polish stocks like PKN) ──
+  // ── Source 3: Stooq .pl (Polish stocks like PKN) ──
   try {
     const res = await fetch(`https://stooq.com/q/l/?s=${encodeURIComponent(tl)}.pl&f=sd2t2ohlcv&h&e=json`);
     if (res.ok) {
       const data = await res.json();
       const price = parseFloat(data?.symbols?.[0]?.close);
       if (!isNaN(price) && price > 0) return { price, currency: 'PLN' };
-    }
-  } catch(e) {}
-
-  // ── Source 3: corsproxy.io → Yahoo Finance ──
-  try {
-    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`;
-    const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`);
-    if (res.ok) {
-      const data = await res.json();
-      const meta = data?.chart?.result?.[0]?.meta;
-      if (meta) {
-        const price = meta.regularMarketPrice ?? meta.previousClose ?? null;
-        const currency = (meta.currency || 'USD').toUpperCase();
-        if (price !== null) return { price, currency };
-      }
-    }
-  } catch(e) {}
-
-  // ── Source 4: allorigins → Yahoo Finance ──
-  try {
-    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`;
-    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`);
-    if (res.ok) {
-      const wrapper = await res.json();
-      const data = JSON.parse(wrapper.contents);
-      const meta = data?.chart?.result?.[0]?.meta;
-      if (meta) {
-        const price = meta.regularMarketPrice ?? meta.previousClose ?? null;
-        const currency = (meta.currency || 'USD').toUpperCase();
-        if (price !== null) return { price, currency };
-      }
     }
   } catch(e) {}
 
@@ -1930,6 +1951,21 @@ async function refreshAllPrices() {
   if (pricesFetching) return;
   const rows = document.querySelectorAll('#stock-tbody tr');
   if (!rows.length) return;
+
+  // Warn if at or near limit
+  const remaining = AV_DAILY_LIMIT - avTodayCount();
+  if (remaining <= 0) {
+    const ts = document.getElementById('price-updated-ts');
+    if (ts) { ts.textContent = '⚠ Daily limit reached (25/25) — resets at midnight'; ts.style.color = 'var(--orange)'; }
+    pricesFetching = false;
+    const btn = document.getElementById('refresh-prices-btn');
+    if (btn) btn.disabled = false;
+    return;
+  }
+  if (remaining < rows.length) {
+    const ts = document.getElementById('price-updated-ts');
+    if (ts) { ts.textContent = `⚠ Only ${remaining} requests left today — partial refresh`; ts.style.color = 'var(--orange)'; }
+  }
 
   pricesFetching = true;
   const btn = document.getElementById('refresh-prices-btn');
