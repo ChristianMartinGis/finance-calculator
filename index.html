@@ -1710,21 +1710,22 @@ function addGoal(preset=null) {
 function removeGoal(id) {
   goals = goals.filter(g=>g.id!==id);
   renderGoals();
+  saveAppState();
 }
 
 function toggleMilestone(goalId, mIdx) {
   const goal = goals.find(g=>g.id===goalId);
-  if (goal) { goal.milestones[mIdx].done = !goal.milestones[mIdx].done; renderGoals(); }
+  if (goal) { goal.milestones[mIdx].done = !goal.milestones[mIdx].done; renderGoals(); saveAppState(); }
 }
 
 function addMilestone(goalId) {
   const goal = goals.find(g=>g.id===goalId);
-  if (goal) { goal.milestones.push({text:'New milestone',done:false}); renderGoals(); }
+  if (goal) { goal.milestones.push({text:'New milestone',done:false}); renderGoals(); saveAppState(); }
 }
 
 function updateGoalField(id, field, val) {
   const goal = goals.find(g=>g.id===id);
-  if (goal) { goal[field] = field==='target'||field==='saved'||field==='monthly' ? (parseFloat(val)||0) : val; renderGoals(); }
+  if (goal) { goal[field] = field==='target'||field==='saved'||field==='monthly' ? (parseFloat(val)||0) : val; renderGoals(); saveAppState(); }
 }
 
 function renderGoals() {
@@ -1794,20 +1795,187 @@ function renderGoals() {
 }
 
 // ── INIT ──────────────────────────────────────────
+// ── PERSIST & RESTORE ALL DATA ────────────────────
+const APP_STATE_KEY = 'fc_app_state_v1';
+
+function saveAppState() {
+  try {
+    // Collect budget expenses
+    const expenses = [];
+    document.querySelectorAll('#expense-list .expense-row').forEach(r => {
+      expenses.push({
+        name: r.querySelector('input[type="text"]')?.value || '',
+        amount: r.querySelector('input[type="number"]')?.value || '0',
+        curr: r.querySelector('.curr-badge')?.textContent || 'PLN'
+      });
+    });
+
+    // Collect fixed accounts
+    const fixedAccounts = [];
+    document.querySelectorAll('#fixed-accounts > div').forEach(r => {
+      const inputs = r.querySelectorAll('input');
+      fixedAccounts.push({
+        name: inputs[0]?.value || '',
+        balance: inputs[1]?.value || '0',
+        rate: inputs[2]?.value || '0',
+        curr: r.querySelector('.curr-badge')?.textContent || 'PLN'
+      });
+    });
+
+    // Collect stocks
+    const stocks = [];
+    document.querySelectorAll('#stock-tbody tr').forEach(tr => {
+      const inputs = tr.querySelectorAll('input[type="number"]');
+      stocks.push({
+        ticker: tr.getAttribute('data-ticker') || '',
+        shares: inputs[0]?.value || '0',
+        avgBuy: inputs[1]?.value || '0',
+        current: tr.querySelector('.price-cell input')?.value || '0',
+        curr: tr.querySelector('.curr-badge')?.textContent || 'USD'
+      });
+    });
+
+    // Collect mortgage inputs
+    const mortgage = {
+      price: document.getElementById('m-price')?.value || '',
+      priceCurr: document.getElementById('m-price-curr')?.value || 'PLN',
+      down: document.getElementById('m-down')?.value || '',
+      downCurr: document.getElementById('m-down-curr')?.value || 'PLN',
+      rate: document.getElementById('m-rate')?.value || '5.5',
+      term: document.getElementById('m-term')?.value || '25',
+      type: document.getElementById('m-type')?.value || 'repayment',
+      tax: document.getElementById('m-tax')?.value || '',
+      taxCurr: document.getElementById('m-tax-curr')?.value || 'PLN',
+      ins: document.getElementById('m-ins')?.value || '',
+      insCurr: document.getElementById('m-ins-curr')?.value || 'PLN',
+      maint: document.getElementById('m-maint')?.value || '',
+      maintCurr: document.getElementById('m-maint-curr')?.value || 'PLN',
+      purchased: document.getElementById('m-purchased')?.checked || false,
+      overpayMonthly: document.getElementById('m-overpay-monthly')?.value || '0',
+      overpayLump: document.getElementById('m-overpay-lump')?.value || '0',
+      overpayFreq: document.getElementById('m-overpay-freq')?.value || '1',
+    };
+
+    // Income
+    const income = {
+      salary: document.getElementById('salary')?.value || '',
+      salaryCurr: document.getElementById('salary-curr')?.value || 'PLN',
+      other: document.getElementById('other-income')?.value || '0',
+      otherCurr: document.getElementById('other-curr')?.value || 'PLN',
+    };
+
+    // FX rates
+    const fx = {
+      eur: document.getElementById('fx-rate')?.value || '4.2793',
+      usd: document.getElementById('fx-usd')?.value || '3.9820',
+    };
+
+    // Goals
+    const savedGoals = goals.map(g => ({
+      id: g.id, icon: g.icon, name: g.name, target: g.target,
+      saved: g.saved, monthly: g.monthly, color: g.color,
+      tag: g.tag, milestones: g.milestones
+    }));
+
+    const state = { expenses, fixedAccounts, stocks, mortgage, income, fx, goals: savedGoals, savedAt: Date.now() };
+    localStorage.setItem(APP_STATE_KEY, JSON.stringify(state));
+  } catch(e) { console.warn('saveAppState failed:', e); }
+}
+
+function restoreAppState() {
+  try {
+    const raw = localStorage.getItem(APP_STATE_KEY);
+    if (!raw) return false;
+    const state = JSON.parse(raw);
+    if (!state) return false;
+
+    // FX rates — restore first so conversions work
+    if (state.fx?.eur) document.getElementById('fx-rate').value = state.fx.eur;
+    if (state.fx?.usd) document.getElementById('fx-usd').value  = state.fx.usd;
+
+    // Income
+    if (state.income) {
+      if (state.income.salary)     document.getElementById('salary').value          = state.income.salary;
+      if (state.income.salaryCurr) document.getElementById('salary-curr').value     = state.income.salaryCurr;
+      if (state.income.other)      document.getElementById('other-income').value     = state.income.other;
+      if (state.income.otherCurr)  document.getElementById('other-curr').value      = state.income.otherCurr;
+    }
+
+    // Budget expenses
+    if (state.expenses?.length) {
+      state.expenses.forEach(e => addExpRow(e.name, parseFloat(e.amount) || 0, e.curr));
+    }
+
+    // Fixed accounts
+    if (state.fixedAccounts?.length) {
+      state.fixedAccounts.forEach(a => addFixedAcc(a.name, parseFloat(a.balance) || 0, parseFloat(a.rate) || 0, a.curr));
+    }
+
+    // Stocks
+    if (state.stocks?.length) {
+      state.stocks.forEach(s => addStockRow(s.ticker, parseFloat(s.shares) || 0, parseFloat(s.avgBuy) || 0, parseFloat(s.current) || 0, s.curr));
+    }
+
+    // Mortgage
+    if (state.mortgage) {
+      const m = state.mortgage;
+      if (m.price)     { document.getElementById('m-price').value     = m.price;     document.getElementById('m-price-curr').value = m.priceCurr; }
+      if (m.down)      { document.getElementById('m-down').value      = m.down;      document.getElementById('m-down-curr').value  = m.downCurr; }
+      if (m.rate)      { document.getElementById('m-rate').value      = m.rate;      document.getElementById('m-rate-lbl').textContent = m.rate + '%'; }
+      if (m.term)      { document.getElementById('m-term').value      = m.term;      document.getElementById('m-term-lbl').textContent = m.term + ' years'; }
+      if (m.type)        document.getElementById('m-type').value      = m.type;
+      if (m.tax)       { document.getElementById('m-tax').value       = m.tax;       document.getElementById('m-tax-curr').value   = m.taxCurr; }
+      if (m.ins)       { document.getElementById('m-ins').value       = m.ins;       document.getElementById('m-ins-curr').value   = m.insCurr; }
+      if (m.maint)     { document.getElementById('m-maint').value     = m.maint;     document.getElementById('m-maint-curr').value = m.maintCurr; }
+      if (m.purchased)   document.getElementById('m-purchased').checked = m.purchased;
+      if (m.overpayMonthly) document.getElementById('m-overpay-monthly').value = m.overpayMonthly;
+      if (m.overpayLump)    document.getElementById('m-overpay-lump').value    = m.overpayLump;
+      if (m.overpayFreq)    document.getElementById('m-overpay-freq').value    = m.overpayFreq;
+    }
+
+    // Goals
+    if (state.goals?.length) {
+      goals = state.goals;
+      goalIdCounter = Math.max(...state.goals.map(g => g.id), 0);
+    }
+
+    return true;
+  } catch(e) { console.warn('restoreAppState failed:', e); return false; }
+}
+
+// Auto-save whenever any input changes anywhere in the app
+function initAutoSave() {
+  // Save on any input/change event on the whole document
+  document.addEventListener('input',  () => saveAppState(), { passive: true });
+  document.addEventListener('change', () => saveAppState(), { passive: true });
+  // Also save when user leaves or switches tab
+  document.addEventListener('visibilitychange', () => { if (document.hidden) saveAppState(); });
+  window.addEventListener('beforeunload', () => saveAppState());
+}
+
+// ── INIT ──────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
-  DEF_CATS.forEach(c => addExpRow(c.n, c.a, c.c));
-  addFixedAcc('PKO Bank Account',15000,3.5,'PLN');
-  addFixedAcc('ING Savings',8000,5.2,'PLN');
-  addFixedAcc('Revolut Savings',2000,4.5,'EUR');
-  addStockRow('MSFT',10,320,375,'USD');
-  addStockRow('AAPL',15,170,195,'USD');
-  addStockRow('PKN',50,68,72,'PLN');
-  addStockRow('VWCE',20,95,110,'EUR');
-  GOAL_PRESETS.forEach(p => addGoal(p));
+  const hasState = restoreAppState();
+
+  if (!hasState) {
+    // First launch — load defaults
+    DEF_CATS.forEach(c => addExpRow(c.n, c.a, c.c));
+    addFixedAcc('PKO Bank Account', 15000, 3.5, 'PLN');
+    addFixedAcc('ING Savings', 8000, 5.2, 'PLN');
+    addFixedAcc('Revolut Savings', 2000, 4.5, 'EUR');
+    addStockRow('MSFT', 10, 320, 375, 'USD');
+    addStockRow('AAPL', 15, 170, 195, 'USD');
+    addStockRow('PKN', 50, 68, 72, 'PLN');
+    GOAL_PRESETS.forEach(p => addGoal(p));
+  }
+
   initExpenseTracker();
+  initAutoSave();
   recalcAll();
+  renderGoals();
   updateAvCounter();
-  fetchNBPRates().then(() => setTimeout(refreshAllPrices, 400));
+  // Fetch NBP rates on load — but do NOT auto-refresh stock prices
+  fetchNBPRates();
   initPWA();
 });
 
@@ -1833,6 +2001,7 @@ async function fetchNBPRates() {
     if (eur) document.getElementById('fx-rate').value = eur.mid.toFixed(4);
     if (usd) document.getElementById('fx-usd').value  = usd.mid.toFixed(4);
     recalcAll();
+    saveAppState();
     if (tsEl) { tsEl.textContent = `✓ NBP mid-rates · ${date}`; tsEl.style.color = 'var(--positive)'; }
     return;
   } catch (e) {
@@ -1982,16 +2151,25 @@ async function refreshAllPrices() {
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
-  let fetched = 0, failed = [];
+  let fetched = 0, failed = [], rowIdx = 0;
+  const rowsArr = [...rows];
 
-  for (const tr of rows) {
+  for (const tr of rowsArr) {
     const ticker = tr.getAttribute('data-ticker')?.trim().toUpperCase();
-    if (!ticker) continue;
+    if (!ticker) { rowIdx++; continue; }
 
     const priceInput = tr.querySelector('.price-cell input');
     const tsCell     = tr.querySelector('.price-ts');
     const badge      = tr.querySelector('.curr-badge');
-    if (!priceInput) continue;
+    if (!priceInput) { rowIdx++; continue; }
+
+    // If not the first ticker, wait 15s and show countdown
+    if (rowIdx > 0) {
+      for (let s = 15; s > 0; s--) {
+        if (tsCell) { tsCell.textContent = `wait ${s}s…`; tsCell.style.color = 'var(--text3)'; }
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
 
     if (tsCell) tsCell.textContent = '…';
 
@@ -2018,9 +2196,11 @@ async function refreshAllPrices() {
         tsCell.style.color = 'var(--negative)';
       }
     }
+    rowIdx++;
   }
 
   calcSavings();
+  saveAppState();
 
   const ts = document.getElementById('price-updated-ts');
   if (ts) {
@@ -2225,6 +2405,7 @@ function confirmImport() {
   cash.forEach(r => addFixedAcc('DeGiro Cash (EUR)', r.price, 0, 'EUR'));
   calcSavings();
   closeImportModal();
+  saveAppState();
   if (stocks.length > 0) alert(`✓ Imported ${stocks.length} position(s)${cash.length?` + ${cash.length} cash`:''}.\n\n⚠ Avg Buy prices are set to blank — please fill them in from your DeGiro transaction history.`);
   setTimeout(refreshAllPrices, 300);
 }
