@@ -732,6 +732,11 @@
         <div class="form-group"><label>Maintenance</label><div class="curr-pair"><div class="input-wrap"><span class="input-prefix">zł</span><input type="number" id="m-maint" class="has-prefix" value="400" oninput="calcMortgage()"></div><select id="m-maint-curr" onchange="calcMortgage()"><option>PLN</option><option>EUR</option></select></div></div>
       </div>
       <div class="card">
+        <div class="card-title">First Applicant Income <span style="font-size:9px;color:var(--text3);font-weight:400;font-style:italic;">you</span></div>
+        <div class="form-group" style="margin-bottom:6px;"><label>Monthly Net Salary</label><div class="curr-pair"><div class="input-wrap"><span class="input-prefix">zł</span><input type="number" id="m-salary1" class="has-prefix" value="0" placeholder="0" oninput="calcMortgage()"></div><select id="m-salary1-curr" onchange="calcMortgage()"><option>PLN</option><option>EUR</option></select></div></div>
+        <div style="font-size:11px;color:var(--text3);" id="m-salary1-note">Auto-filled from your avg salary in transactions — edit to override.</div>
+      </div>
+      <div class="card">
         <div class="card-title">Second Applicant Income <span style="font-size:9px;color:var(--text3);font-weight:400;font-style:italic;">e.g. partner / fiancée</span></div>
         <div class="form-group"><label>Monthly Net Salary</label><div class="curr-pair"><div class="input-wrap"><span class="input-prefix">zł</span><input type="number" id="m-salary2" class="has-prefix" value="0" placeholder="0" oninput="calcMortgage()"></div><select id="m-salary2-curr" onchange="calcMortgage()"><option>PLN</option><option>EUR</option></select></div></div>
         <div style="font-size:11px;color:var(--text3);margin-top:-8px;">Added to combined income for affordability &amp; overview health score only.</div>
@@ -864,19 +869,12 @@
   </div>
   <p class="section-sub" style="margin-top:4px;">Log expenses & income · data saved in browser · persists between sessions</p>
 
-  <!-- Income inputs (moved from Budget tab) -->
-  <div class="card" style="margin-bottom:14px;">
-    <div class="card-title" style="margin-bottom:12px;">My Monthly Income</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <div class="form-group" style="margin:0;">
-        <label>Monthly Net Salary</label>
-        <div class="curr-pair"><div class="input-wrap"><span class="input-prefix">zł</span><input type="number" id="salary" class="has-prefix" value="6000" oninput="recalcAll()"></div><select id="salary-curr" onchange="recalcAll()"><option>PLN</option><option>EUR</option></select></div>
-      </div>
-      <div class="form-group" style="margin:0;">
-        <label>Other Monthly Income</label>
-        <div class="curr-pair"><div class="input-wrap"><span class="input-prefix">zł</span><input type="number" id="other-income" class="has-prefix" value="0" oninput="recalcAll()"></div><select id="other-curr" onchange="recalcAll()"><option>PLN</option><option>EUR</option></select></div>
-      </div>
-    </div>
+  <!-- Hidden salary inputs — still used by mortgage/health score calculations -->
+  <div style="display:none;">
+    <input type="number" id="salary" value="0">
+    <select id="salary-curr"><option>PLN</option><option>EUR</option></select>
+    <input type="number" id="other-income" value="0">
+    <select id="other-curr"><option>PLN</option><option>EUR</option></select>
   </div>
 
   <!-- Backup reminder banner -->
@@ -899,10 +897,10 @@
         </select>
       </div>
       <div class="form-group" style="margin:0;">
+        <div id="exp-hist-hint" style="display:none;margin-bottom:4px;font-size:10px;color:var(--positive);padding:3px 6px;background:rgba(5,150,105,.08);border-radius:4px;border:1px solid rgba(5,150,105,.2);"></div>
         <label>Description</label>
         <input type="text" id="exp-desc" placeholder="e.g. Lidl groceries" style="font-family:'DM Sans',sans-serif;"
           oninput="suggestCatFromHistory(this.value)">
-        <div id="exp-hist-hint" style="display:none;margin-top:4px;font-size:10px;color:var(--positive);padding:3px 6px;background:rgba(5,150,105,.08);border-radius:4px;border:1px solid rgba(5,150,105,.2);"></div>
       </div>
       <div class="form-group" style="margin:0;">
         <label>Amount</label>
@@ -921,7 +919,12 @@
       </div>
       <div class="form-group" style="margin:0;">
         <label>Date</label>
-        <input type="date" id="exp-date" style="font-family:'DM Mono',monospace;font-size:13px;">
+        <div style="display:grid;grid-template-columns:54px 1fr 66px;gap:4px;">
+          <select id="exp-date-d" onchange="syncExpDate()" style="font-size:12px;padding:7px 4px;text-align:center;font-family:'DM Mono',monospace;"></select>
+          <select id="exp-date-m" onchange="syncExpDate()" style="font-size:12px;padding:7px 6px;font-family:'DM Sans',sans-serif;"></select>
+          <select id="exp-date-y" onchange="syncExpDate()" style="font-size:12px;padding:7px 4px;text-align:center;font-family:'DM Mono',monospace;"></select>
+        </div>
+        <input type="hidden" id="exp-date">
       </div>
       <button class="btn" style="white-space:nowrap;align-self:flex-end;" onclick="addExpenseEntry()">+ Add</button>
     </div>
@@ -1936,7 +1939,8 @@ function calcMortgage() {
   document.getElementById('m-allin').textContent = fz(allin);
   document.getElementById('m-ltv').textContent = ltv.toFixed(1) + '%';
 
-  const income = toPLN(g('salary'), gs('salary-curr')) + toPLN(g('other-income'), gs('other-curr'));
+  // m-salary1 is auto-populated from avg salary by updateOverview but editable
+  const income = toPLN(g('m-salary1'), gs('m-salary1-curr'));
   const income2 = toPLN(g('m-salary2'), gs('m-salary2-curr'));
   const combinedIncome = income + income2;
   const purchased = document.getElementById('m-purchased')?.checked;
@@ -2107,18 +2111,50 @@ function drawCmpChart(rData, bData, years, cpiOn=false) {
 }
 
 // ── OVERVIEW ──────────────────────────────────────
+function getMonthSalary(ym) {
+  // Sum transactions with cat='Income' and subcat='Salary' for a given YYYY-MM
+  return expEntries
+    .filter(e => e.type === 'income' && e.date.startsWith(ym) &&
+                 e.cat === 'Income' && e.subcat === 'Salary')
+    .reduce((s, e) => s + e.amount, 0);
+}
+
 function updateOverview() {
-  const income = toPLN(g('salary'),gs('salary-curr')) + toPLN(g('other-income'),gs('other-curr'));
-  const partner2 = toPLN(g('m-salary2'),gs('m-salary2-curr'));
-  const combinedInc = income + partner2;
-  let totalExp = 0;
-  document.querySelectorAll('#expense-list .expense-row').forEach(r => {
-    const amt = parseFloat(r.querySelector('input[type="number"]')?.value) || 0;
-    const curr = r.querySelector('.curr-badge')?.textContent || 'PLN';
-    totalExp += toPLN(amt, curr);
-  });
-  const sav = income - totalExp;
+  // ── Derive income from transactions (Salary entries) ──
+  const selMonth = ovViewMonth; // follow the month navigation
+  const income = getMonthSalary(selMonth);
+
+  const partner2 = toPLN(g('m-salary2'), gs('m-salary2-curr'));
+  const combinedInc = income + partner2; // single-month (for Saved tile)
+
+  // ── Expenses for selected month ──
+  const monthExpenses = expEntries.filter(e => e.type !== 'income' && e.date.startsWith(selMonth));
+  const totalExp = monthExpenses.reduce((s, e) => s + e.amount, 0);
+
+  const sav  = income - totalExp;
   const rate = income > 0 ? sav / income * 100 : 0;
+
+  // ── Yearly averages (months with any data this calendar year) ──
+  const thisYear = selMonth.slice(0, 4);
+  const monthsWithSalary = [...new Set(
+    expEntries.filter(e => e.type === 'income' && e.cat === 'Income' &&
+                           e.subcat === 'Salary' && e.date.startsWith(thisYear))
+              .map(e => e.date.slice(0, 7))
+  )];
+  const monthsWithExp = [...new Set(
+    expEntries.filter(e => e.type !== 'income' && e.date.startsWith(thisYear))
+              .map(e => e.date.slice(0, 7))
+  )];
+  const avgIncome = monthsWithSalary.length > 0
+    ? monthsWithSalary.reduce((s, ym) => s + getMonthSalary(ym), 0) / monthsWithSalary.length
+    : 0;
+  const avgExp = monthsWithExp.length > 0
+    ? monthsWithExp.reduce((s, ym) => s +
+        expEntries.filter(e => e.type !== 'income' && e.date.startsWith(ym))
+                  .reduce((ss, e) => ss + e.amount, 0), 0) / monthsWithExp.length
+    : 0;
+
+  // ── Wealth ──
   let faTotal = 0;
   document.querySelectorAll('#fixed-accounts > div').forEach(r => {
     const inputs = r.querySelectorAll('input[type="number"]');
@@ -2140,22 +2176,29 @@ function updateOverview() {
   const netWorth = faTotal + sVal + equity;
   const faCnt = document.querySelectorAll('#fixed-accounts > div').length;
   const stCnt = document.querySelectorAll('#stock-tbody tr').length;
-  const expCnt = document.querySelectorAll('#expense-list .expense-row').length;
 
-  // Update compact summary row
-  document.getElementById('ov-income').textContent = fz(income);
-  document.getElementById('ov-income-sub').textContent = gs('salary-curr')==='EUR'?'€'+g('salary')+' converted':'zł net salary';
-  document.getElementById('ov-expenses').textContent = fz(totalExp);
-  // Use actual logged expenses for this month if available
-  const curMonth = new Date().toISOString().slice(0,7);
-  const loggedThisMonth = expEntries.filter(e => e.type==='expense' && e.date.startsWith(curMonth));
-  const loggedTotal = loggedThisMonth.reduce((s,e) => s+e.amount, 0);
-  document.getElementById('ov-exp-sub').textContent = loggedTotal > 0
-    ? fz(loggedTotal) + ' logged this month'
-    : expCnt + ' budget categories';
-  document.getElementById('ov-free').textContent = fzS(sav);
-  document.getElementById('ov-free').style.color = sav >= 0 ? 'var(--positive)' : 'var(--negative)';
-  document.getElementById('ov-rate-sub').textContent = rate.toFixed(1) + '% savings rate';
+  // ── Update tiles ──
+  const fmtMon = ym => new Date(ym+'-01').toLocaleDateString('en-GB',{month:'short',year:'numeric'});
+
+  document.getElementById('ov-income').textContent = income > 0 ? fz(income) : '—';
+  document.getElementById('ov-income-sub').textContent = avgIncome > 0
+    ? `avg ${fz(avgIncome)}/mo (${monthsWithSalary.length}mo)`
+    : 'no salary logged yet';
+
+  document.getElementById('ov-expenses').textContent = totalExp > 0 ? fz(totalExp) : '—';
+  document.getElementById('ov-exp-sub').textContent = avgExp > 0
+    ? `avg ${fz(avgExp)}/mo (${monthsWithExp.length}mo)`
+    : 'no expenses logged yet';
+
+  const savEl = document.getElementById('ov-free');
+  if (savEl) {
+    savEl.textContent = income > 0 || totalExp > 0 ? fzS(sav) : '—';
+    savEl.style.color = sav >= 0 ? 'var(--positive)' : 'var(--negative)';
+  }
+  document.getElementById('ov-rate-sub').textContent = rate > 0
+    ? rate.toFixed(1) + '% savings rate'
+    : fmtMon(selMonth);
+
   document.getElementById('ov-networth').textContent = fz(netWorth);
   document.getElementById('ov-fixed').textContent = fz(faTotal);
   document.getElementById('ov-fixed-sub').textContent = faCnt + ' account' + (faCnt!==1?'s':'');
@@ -2163,8 +2206,33 @@ function updateOverview() {
   document.getElementById('ov-stocks-sub').textContent = stCnt + ' position' + (stCnt!==1?'s':'');
   document.getElementById('ov-equity').textContent = purchased && mPrice > 0 ? fz(equity) : '—';
 
+  // Auto-populate m-salary1 with avg salary if blank or not yet user-edited
+  const sal1El = document.getElementById('m-salary1');
+  if (sal1El) {
+    const current1 = parseFloat(sal1El.value) || 0;
+    const avg = avgIncome > 0 ? avgIncome : income;
+    // Fill if blank, or if value matches a previous auto-fill (within 1 PLN tolerance)
+    const lastAutoFill = parseFloat(sal1El.dataset.lastAuto || '0');
+    if (current1 === 0 || Math.abs(current1 - lastAutoFill) < 1) {
+      sal1El.value = Math.round(avg);
+      sal1El.dataset.lastAuto = Math.round(avg);
+    }
+    // Update the note with avg context
+    const noteEl = document.getElementById('m-salary1-note');
+    if (noteEl && avgIncome > 0) {
+      noteEl.textContent = `Auto-filled from avg salary: ${fz(avgIncome)}/mo (${monthsWithSalary.length}mo) — edit to override.`;
+    }
+  }
+  // Keep hidden salary in sync for any remaining references
+  const salEl = document.getElementById('salary');
+  if (salEl) salEl.value = (avgIncome > 0 ? avgIncome : income).toFixed(2);
+
+  // Avg-based rate and combined income for health score + mortgage
+  const avgRate = avgIncome > 0 ? (avgIncome - avgExp) / avgIncome * 100 : rate;
+  const combinedAvgInc = (avgIncome > 0 ? avgIncome : income) + partner2;
+
   drawWealthBar(faTotal, sVal, equity);
-  calcHealth(rate, combinedInc, totalExp, faTotal, sVal, mPrice, mDown);
+  calcHealth(avgRate, combinedAvgInc, avgExp > 0 ? avgExp : totalExp, faTotal, sVal, mPrice, mDown);
   updateMonthComparison();
 }
 
@@ -2175,7 +2243,7 @@ function ovChangeMonth(dir) {
   const [y, m] = ovViewMonth.split('-').map(Number);
   const d = new Date(y, m - 1 + dir, 1);
   ovViewMonth = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
-  updateMonthComparison();
+  updateOverview(); // updates tiles + calls updateMonthComparison at the end
 }
 
 function updateMonthComparison() {
@@ -2712,6 +2780,8 @@ function saveAppState() {
     // Collect mortgage inputs
     const mortgage = {
       price: document.getElementById('m-price')?.value || '',
+      salary1: document.getElementById('m-salary1')?.value || '',
+      salary1Curr: document.getElementById('m-salary1-curr')?.value || 'PLN',
       salary2: document.getElementById('m-salary2')?.value || '',
       salary2Curr: document.getElementById('m-salary2-curr')?.value || 'PLN',
       priceCurr: document.getElementById('m-price-curr')?.value || 'PLN',
@@ -2804,6 +2874,7 @@ function restoreAppState() {
       if (m.ins)       { document.getElementById('m-ins').value       = m.ins;       document.getElementById('m-ins-curr').value   = m.insCurr; }
       if (m.maint)     { document.getElementById('m-maint').value     = m.maint;     document.getElementById('m-maint-curr').value = m.maintCurr; }
       if (m.purchased)   document.getElementById('m-purchased').checked = m.purchased;
+      if (m.salary1)     { const el=document.getElementById('m-salary1'); if(el){el.value=m.salary1;el.dataset.lastAuto=m.salary1;} document.getElementById('m-salary1-curr').value = m.salary1Curr || 'PLN'; }
       if (m.salary2)     { document.getElementById('m-salary2').value = m.salary2; document.getElementById('m-salary2-curr').value = m.salary2Curr || 'PLN'; }
       if (m.overpayMonthly) document.getElementById('m-overpay-monthly').value = m.overpayMonthly;
       if (m.overpayLump)    document.getElementById('m-overpay-lump').value    = m.overpayLump;
@@ -3687,7 +3758,7 @@ function renderCSVReviewTable() {
     return `<tr class="${isIncome?'income-row':''}" id="csv-row-${i}">
       <td><input type="checkbox" class="row-toggle csv-row-check" data-idx="${i}" onchange="onCSVRowCheck()"
         checked></td>
-      <td style="font-family:'DM Mono',monospace;font-size:11px;white-space:nowrap;">${row.date.slice(5)}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;white-space:nowrap;">${row.date.slice(8)}/${row.date.slice(5,7)}</td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${row.desc}">${row.desc}</td>
       <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:600;color:${isIncome?'var(--positive)':'var(--negative)'};">
         ${isIncome?'+':'-'}${row.amount.toFixed(2)} ${row.curr}</td>
@@ -3965,6 +4036,46 @@ Use exact category names from the list. If no good subcategory exists use "".`;
   }
 }
 
+const MONTHS_EU = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function initExpDateDropdowns() {
+  const now   = new Date();
+  const dayEl = document.getElementById('exp-date-d');
+  const monEl = document.getElementById('exp-date-m');
+  const yrEl  = document.getElementById('exp-date-y');
+  if (!dayEl || !monEl || !yrEl) return;
+
+  // Days 1-31
+  dayEl.innerHTML = Array.from({length:31},(_,i)=>
+    `<option value="${String(i+1).padStart(2,'0')}">${String(i+1).padStart(2,'0')}</option>`
+  ).join('');
+
+  // Months
+  monEl.innerHTML = MONTHS_EU.map((name,i)=>
+    `<option value="${String(i+1).padStart(2,'0')}">${name}</option>`
+  ).join('');
+
+  // Years: current year -2 to +1
+  const yr = now.getFullYear();
+  yrEl.innerHTML = [yr-2, yr-1, yr, yr+1].map(y=>
+    `<option value="${y}">${y}</option>`
+  ).join('');
+
+  // Set to today
+  dayEl.value = String(now.getDate()).padStart(2,'0');
+  monEl.value = String(now.getMonth()+1).padStart(2,'0');
+  yrEl.value  = String(now.getFullYear());
+  syncExpDate();
+}
+
+function syncExpDate() {
+  const d = document.getElementById('exp-date-d')?.value || '01';
+  const m = document.getElementById('exp-date-m')?.value || '01';
+  const y = document.getElementById('exp-date-y')?.value || new Date().getFullYear();
+  const hidden = document.getElementById('exp-date');
+  if (hidden) hidden.value = `${y}-${m}-${d}`;
+}
+
 function initExpenseTracker() {
   loadCats();
   try {
@@ -3973,9 +4084,8 @@ function initExpenseTracker() {
   } catch(e) { expEntries = []; }
 
   const today = new Date().toISOString().slice(0,10);
-  const dateEl = document.getElementById('exp-date');
-  if (dateEl) dateEl.value = today;
   expViewMonth = today.slice(0,7);
+  initExpDateDropdowns();
 
   populateExpCatSelect();
   renderCatManager();
@@ -4083,11 +4193,20 @@ function renderExpenses() {
 
   const totEl = document.getElementById('exp-month-total');
   if (totEl) {
-    const filtTotal = viewEntries.reduce((s,e) => s+e.amount, 0);
     if (viewEntries.length > 0) {
-      const label = expViewMode === 'income' ? 'income' : expCatFilter ? expCatFilter : 'spent';
-      totEl.textContent = fz(filtTotal) + ' ' + label;
-    } else { totEl.textContent = ''; }
+      if (expViewMode === 'all') {
+        const incAmt = viewEntries.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+        const expAmt = viewEntries.filter(e=>e.type!=='income').reduce((s,e)=>s+e.amount,0);
+        const net = incAmt - expAmt;
+        totEl.textContent = (net >= 0 ? '+' : '') + fz(net) + ' net';
+        totEl.style.color = net >= 0 ? 'var(--positive)' : 'var(--negative)';
+      } else {
+        const filtTotal = viewEntries.reduce((s,e) => s+e.amount, 0);
+        const label = expViewMode === 'income' ? 'income' : expCatFilter ? expCatFilter : 'spent';
+        totEl.textContent = fz(filtTotal) + ' ' + label;
+        totEl.style.color = 'var(--accent)';
+      }
+    } else { totEl.textContent = ''; totEl.style.color = 'var(--accent)'; }
   }
 
   // Summary tiles — proper income vs expense split
@@ -4132,7 +4251,7 @@ function renderExpenses() {
     const catOpts = cats.map(c => `<option value="${c}"${c===e.cat?' selected':''}>${c}</option>`).join('');
     const subOpts = `<option value="">— none —</option>` + expSubcats(e.cat).map(s => `<option value="${s}"${s===e.subcat?' selected':''}>${s}</option>`).join('');
     row.innerHTML = `
-      <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);">${e.date.slice(5)}</span>
+      <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);">${e.date.slice(8)}/${e.date.slice(5,7)}</span>
       <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${e.desc}">
         <input type="text" value="${e.desc.replace(/"/g,'&quot;')}" style="width:100%;border:none;background:transparent;font-size:12px;color:var(--text2);font-family:'DM Sans',sans-serif;padding:0;outline:none;cursor:text;"
           onchange="updateExpEntry(${e.id},'desc',this.value)"
@@ -4435,12 +4554,34 @@ function closeSyncMenu() {
 }
 
 function collectAllData() {
-  // Gather all localStorage-stored data plus current FX rates
+  const fixedAccounts = [];
+  document.querySelectorAll('#fixed-accounts > div').forEach(r => {
+    const inputs = r.querySelectorAll('input[type="number"]');
+    fixedAccounts.push({
+      name:    r.querySelector('input[type="text"]')?.value || '',
+      balance: inputs[0]?.value || '0',
+      rate:    inputs[1]?.value || '0',
+      curr:    r.querySelector('.curr-badge')?.textContent || 'PLN'
+    });
+  });
+  const stocks = [];
+  document.querySelectorAll('#stock-tbody tr').forEach(tr => {
+    const inputs = tr.querySelectorAll('input[type="number"]');
+    stocks.push({
+      ticker:  tr.getAttribute('data-ticker') || '',
+      shares:  inputs[0]?.value || '0',
+      avgBuy:  inputs[1]?.value || '0',
+      current: tr.querySelector('.price-cell input')?.value || '0',
+      curr:    tr.querySelector('.curr-badge')?.textContent || 'USD'
+    });
+  });
   return {
-    version: 3,
+    version: 4,
     savedAt: new Date().toISOString(),
     device: navigator.userAgent.slice(0, 60),
     expenses: expEntries,
+    fixedAccounts,
+    stocks,
     fxEur: document.getElementById('fx-rate')?.value || '4.2793',
     fxUsd: document.getElementById('fx-usd')?.value  || '3.9820',
   };
@@ -4450,18 +4591,33 @@ function applyAllData(data) {
   if (!data || !data.version) { alert('Unrecognised file format.'); return; }
   let changes = [];
 
+  // Expenses/transactions
   if (Array.isArray(data.expenses) && data.expenses.length > 0) {
     if (expEntries.length > 0) {
       const existing = new Set(expEntries.map(e => e.id));
       const newOnes  = data.expenses.filter(e => !existing.has(e.id));
       expEntries = [...expEntries, ...newOnes];
-      changes.push(`${newOnes.length} new expense(s) merged`);
+      changes.push(`${newOnes.length} new transaction(s) merged`);
     } else {
       expEntries = data.expenses;
-      changes.push(`${expEntries.length} expense(s) loaded`);
+      changes.push(`${expEntries.length} transaction(s) loaded`);
     }
     saveExpenses();
     renderExpenses();
+  }
+
+  // Fixed accounts
+  if (Array.isArray(data.fixedAccounts) && data.fixedAccounts.length > 0) {
+    document.getElementById('fixed-accounts').innerHTML = '';
+    data.fixedAccounts.forEach(a => addFixedAcc(a.name, parseFloat(a.balance)||0, parseFloat(a.rate)||0, a.curr));
+    changes.push(`${data.fixedAccounts.length} fixed account(s) restored`);
+  }
+
+  // Stocks
+  if (Array.isArray(data.stocks) && data.stocks.length > 0) {
+    document.getElementById('stock-tbody').innerHTML = '';
+    data.stocks.forEach(s => addStockRow(s.ticker, parseFloat(s.shares)||0, parseFloat(s.avgBuy)||0, parseFloat(s.current)||0, s.curr));
+    changes.push(`${data.stocks.length} stock position(s) restored`);
   }
 
   if (data.fxEur) document.getElementById('fx-rate').value = data.fxEur;
@@ -4507,11 +4663,12 @@ function emailData() {
     `Finance Calculator data backup — ${date}\n\nPaste this into the Import field on any device:\n\n${preview}`
   );
 
-  // Also trigger a file download as a fallback (especially useful on desktop)
-  exportAllData(); // this already stamps the backup timestamp
+  // Trigger file download
+  exportAllData();
 
-  // Open mail app
-  window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  // Open Gmail compose in new tab (works on desktop and mobile Chrome)
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
+  window.open(gmailUrl, '_blank');
 }
 
 function importAllData(inputEl) {
