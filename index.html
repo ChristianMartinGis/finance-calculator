@@ -14,12 +14,12 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root {
-    --bg: #f4f6f9;
+    --bg: #f2f3f7;
     --surface: #ffffff;
-    --surface2: #f8f9fc;
-    --surface3: #eef1f6;
-    --border: #e2e7f0;
-    --border2: #c8d0e0;
+    --surface2: #f7f8fb;
+    --surface3: #eceef4;
+    --border: #e0e5ef;
+    --border2: #c6cedf;
     --text: #1a2236;
     --text2: #4a5568;
     --text3: #8a96aa;
@@ -48,7 +48,7 @@
   .tabs { display: flex; gap: 0; height: 100%; }
   .tab-btn { background: none; border: none; color: var(--text3); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; padding: 0 18px; cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; white-space: nowrap; height: 100%; }
   .tab-btn:hover { color: var(--text2); background: var(--surface2); }
-  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--accent-light); font-weight: 600; }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); border-bottom-width: 3px; background: var(--accent-light); font-weight: 700; letter-spacing: -.1px; }
   main { padding: 24px 28px 48px; max-width: 1280px; }
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
@@ -56,6 +56,8 @@
   .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
   .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+  .tile-positive { border-left: 3px solid var(--positive) !important; }
+  .tile-negative { border-left: 3px solid var(--negative) !important; }
   .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin-bottom: 14px; }
   .stat-tile { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; }
   .stat-tile .label { font-size: 11px; color: var(--text3); margin-bottom: 4px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; }
@@ -212,7 +214,7 @@
   .exp-quick-add { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 18px; box-shadow: var(--shadow); }
   .exp-quick-row { display: grid; grid-template-columns: 1fr 120px 140px 100px auto; gap: 10px; align-items: end; }
   .exp-log { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface); box-shadow: var(--shadow); }
-  .exp-log-row { display: grid; grid-template-columns: 90px 1fr 110px 80px 28px; gap: 8px; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--border); font-size: 12px; transition: background .1s; }
+  .exp-log-row { display: grid; grid-template-columns: 80px 1fr 140px 90px 28px; gap: 8px; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--border); font-size: 12px; transition: background .1s; }
   .exp-log-row:last-child { border-bottom: none; }
   .exp-log-row:hover { background: var(--surface2); }
   .exp-log-header { background: var(--surface2) !important; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text3) !important; }
@@ -406,6 +408,9 @@
     <button class="tab-btn" onclick="switchTab('goals',this)">Goals</button>
   </nav>
   <div style="display:flex;align-items:center;gap:6px;padding-bottom:12px;padding-left:12px;flex-shrink:0;position:relative;">
+    <span id="hfx-eur" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);white-space:nowrap;">€1=—</span>
+    <span style="font-size:10px;color:var(--border2);">|</span>
+    <span id="hfx-usd" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);white-space:nowrap;">$1=—</span>
     <button class="drive-btn" id="sync-btn" onclick="toggleSyncMenu()" title="Export / Import data">
       ⇅ Sync
     </button>
@@ -443,8 +448,8 @@
         <div style="font-size:10px;color:var(--text3);" id="ov-exp-sub"></div>
       </div>
     </div>
-    <div style="flex:1;min-width:140px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px;">
-      <div style="width:36px;height:36px;border-radius:50%;background:#f0fdf4;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">📈</div>
+    <div id="ov-saved-tile" style="flex:1;min-width:140px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px;transition:border-color .3s;">
+      <div style="width:36px;height:36px;border-radius:50%;background:#f0fdf4;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;" id="ov-saved-icon">📈</div>
       <div>
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);">Saved</div>
         <div style="font-family:'DM Mono',monospace;font-size:17px;font-weight:600;" id="ov-free">—</div>
@@ -531,7 +536,17 @@
 
       <!-- Health score — compact -->
       <div class="card">
-        <div class="card-title">Financial Health</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div class="card-title" style="margin-bottom:0;">Financial Health</div>
+          <button onclick="toggleHealthInfo()" title="How is this calculated?" style="background:none;border:1px solid var(--border2);border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;color:var(--text3);line-height:1;flex-shrink:0;">?</button>
+        </div>
+        <div id="health-info" style="display:none;font-size:11px;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;line-height:1.7;">
+          Score out of <strong>100</strong> — four components of 25 pts each:<br>
+          <strong>Savings Rate</strong> — full score at ≥30% saved per month. Target: 20%+.<br>
+          <strong>Emergency Fund</strong> — full score at 6+ months of expenses in fixed accounts.<br>
+          <strong>Diversification</strong> — full score with 20–80% of savings in stocks vs fixed.<br>
+          <strong>Debt Ratio</strong> — full score with mortgage payment ≤28% of monthly income.
+        </div>
         <div style="display:flex;align-items:center;gap:16px;">
           <div style="position:relative;flex-shrink:0;">
             <canvas id="health-arc" width="120" height="70"></canvas>
@@ -544,6 +559,10 @@
             <div id="health-metrics" style="display:flex;flex-direction:column;gap:4px;"></div>
           </div>
         </div>
+      </div>
+      <div class="card" style="margin-top:0;">
+        <div class="card-title" style="margin-bottom:10px;">Savings Rate Trend</div>
+        <div id="ov-savings-trend" style="min-height:60px;"></div>
       </div>
     </div>
   </div>
@@ -961,12 +980,18 @@
           <button id="exp-view-expenses" class="btn" style="font-size:11px;padding:4px 12px;" onclick="setExpView('expenses')">Expenses</button>
           <button id="exp-view-income" class="btn btn-ghost" style="font-size:11px;padding:4px 12px;" onclick="setExpView('income')">Income</button>
           <button id="exp-view-all" class="btn btn-ghost" style="font-size:11px;padding:4px 12px;" onclick="setExpView('all')">All</button>
+          <button id="exp-view-eur" class="btn btn-ghost" style="font-size:11px;padding:4px 12px;" onclick="setExpCurrFilter('EUR')" title="Show EUR transactions only">€ EUR</button>
           <span id="exp-cat-filter-badge" style="display:none;font-size:10px;font-weight:700;padding:3px 8px;background:var(--accent-light);color:var(--accent);border:1px solid #bfdbfe;border-radius:4px;cursor:pointer;" onclick="clearCatFilter()">× Clear filter</span>
           <span id="exp-month-total" style="font-family:'DM Mono',monospace;font-size:14px;color:var(--accent);font-weight:700;"></span>
         </div>
       </div>
+      <div style="margin-bottom:8px;">
+        <input type="text" id="exp-search" placeholder="🔍  Search by description, category…" oninput="renderExpenses()"
+          style="width:100%;font-family:'DM Sans',sans-serif;font-size:12px;padding:7px 10px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface);color:var(--text);outline:none;transition:border-color .15s;"
+          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
+      </div>
       <div class="exp-log" id="exp-log">
-        <div class="exp-log-row exp-log-header" style="grid-template-columns:90px 1fr 100px 80px 28px;">
+        <div class="exp-log-row exp-log-header" style="grid-template-columns:80px 1fr 140px 90px 28px;">
           <span>Date</span><span>Description</span><span>Category</span><span style="text-align:right;">Amount</span><span></span>
         </div>
         <div class="exp-empty" id="exp-empty">No transactions logged for this month yet.</div>
@@ -979,14 +1004,14 @@
         <div class="card-title">Category Breakdown — <span id="exp-breakdown-month" style="color:var(--accent);text-transform:none;letter-spacing:0;font-weight:400;"></span> <span style="font-size:9px;color:var(--text3);font-weight:400;">· Click to filter</span></div>
         <div id="exp-cat-breakdown"></div>
       </div>
-      <div class="card" style="flex:1;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-          <div class="card-title" style="margin-bottom:0;">Month-over-Month</div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div class="card-title" style="margin-bottom:0;">Expenses Month-over-Month</div>
           <select id="exp-mom-cat" style="font-size:10px;padding:3px 7px;width:auto;" onchange="renderMoMChart()">
             <option value="__all__">All categories</option>
           </select>
         </div>
-        <canvas id="exp-mom-chart" height="160"></canvas>
+        <canvas id="exp-mom-chart" height="100"></canvas>
       </div>
       <!-- Category & Subcategory Manager -->
       <div class="card">
@@ -1218,6 +1243,10 @@ function initAllPrefixes() {
 
 function recalcAll() {
   calcBudget(); calcSavings(); calcMortgage(); calcCompare(); updateOverview();
+  const eur = parseFloat(document.getElementById('fx-rate')?.value) || 4.2793;
+  const usd = parseFloat(document.getElementById('fx-usd')?.value) || 3.9820;
+  const he = document.getElementById('hfx-eur'); if (he) he.textContent = '€1=zł'+eur.toFixed(2);
+  const hu = document.getElementById('hfx-usd'); if (hu) hu.textContent = '$1=zł'+usd.toFixed(2);
 }
 
 // ── BUDGET ────────────────────────────────────────
@@ -2231,8 +2260,17 @@ function updateOverview() {
   const avgRate = avgIncome > 0 ? (avgIncome - avgExp) / avgIncome * 100 : rate;
   const combinedAvgInc = (avgIncome > 0 ? avgIncome : income) + partner2;
 
+  // Saved tile dynamic border
+  const savedTile = document.getElementById('ov-saved-tile');
+  const savedIcon = document.getElementById('ov-saved-icon');
+  if (savedTile) {
+    savedTile.style.borderLeft = sav >= 0 ? '3px solid var(--positive)' : '3px solid var(--negative)';
+    if (savedIcon) savedIcon.textContent = sav >= 0 ? '📈' : '📉';
+  }
+
   drawWealthBar(faTotal, sVal, equity);
   calcHealth(avgRate, combinedAvgInc, avgExp > 0 ? avgExp : totalExp, faTotal, sVal, mPrice, mDown);
+  renderSavingsRateTrend();
   updateMonthComparison();
 }
 
@@ -2930,6 +2968,60 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // ── NBP LIVE RATES ────────────────────────────────
 
+function renderSavingsRateTrend() {
+  const el = document.getElementById('ov-savings-trend');
+  if (!el) return;
+
+  // Compute savings rate per month for the current year from transactions
+  const thisYear = new Date().getFullYear().toString();
+  const allMonths = [...new Set(
+    expEntries.filter(e => e.date.startsWith(thisYear))
+              .map(e => e.date.slice(0, 7))
+  )].sort();
+
+  if (allMonths.length === 0) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text3);">No data yet — import transactions to see your savings rate over time.</div>';
+    return;
+  }
+
+  const points = allMonths.map(ym => {
+    const sal = getMonthSalary(ym);
+    const exp = expEntries.filter(e => e.type !== 'income' && e.date.startsWith(ym))
+                          .reduce((s,e) => s + e.amount, 0);
+    const rate = sal > 0 ? Math.round((sal - exp) / sal * 100) : null;
+    return { ym, sal, exp, rate };
+  }).filter(p => p.rate !== null);
+
+  if (points.length === 0) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text3);">Add salary transactions (Income › Salary) to see your savings rate trend.</div>';
+    return;
+  }
+
+  const fmtMon = ym => new Date(ym+'-01').toLocaleDateString('en-GB',{month:'short'});
+  const avgRate = Math.round(points.reduce((s,p) => s + p.rate, 0) / points.length);
+
+  const bars = points.map(p => {
+    const isPos = p.rate >= 0;
+    const h = Math.min(50, Math.abs(p.rate) * 1.5);
+    const col = p.rate >= 20 ? 'var(--positive)' : p.rate >= 0 ? 'var(--accent)' : 'var(--negative)';
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;" title="${fmtMon(p.ym)}: ${p.rate}% saved">
+      <span style="font-size:9px;font-weight:700;color:${col};">${p.rate}%</span>
+      <div style="width:100%;height:${h}px;background:${col};border-radius:3px 3px 0 0;opacity:.85;"></div>
+      <span style="font-size:8px;color:var(--text3);">${fmtMon(p.ym)}</span>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="display:flex;gap:3px;align-items:flex-end;height:80px;margin-bottom:8px;">${bars}</div>
+    <div style="font-size:11px;color:var(--text3);">Avg savings rate this year: <strong style="color:${avgRate>=20?'var(--positive)':avgRate>=0?'var(--accent)':'var(--negative)'};">${avgRate}%</strong>
+    ${avgRate >= 20 ? ' 🎉' : avgRate >= 10 ? ' — aim for 20%+' : ' — below target'}</div>`;
+}
+
+function toggleHealthInfo() {
+  const el = document.getElementById('health-info');
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
 async function fetchNBPRates() {
   const tsEl = document.getElementById('nbp-ts');
   if (tsEl) { tsEl.textContent = '🕐 Fetching exchange rates…'; tsEl.style.color = 'var(--text3)'; }
@@ -3371,6 +3463,7 @@ let expEntries  = [];
 let expViewMode = 'expenses'; // 'expenses' | 'income' | 'all'
 let expViewMonth = '';
 let expCatFilter = null;
+let expCurrFilter = null; // null = all currencies
 
 // ── CATEGORY SYSTEM ───────────────────────────────
 
@@ -3502,13 +3595,28 @@ function saveExpenses() {
 function setExpView(mode) {
   expViewMode = mode;
   expCatFilter = null;
+  expCurrFilter = null;
   document.getElementById('exp-view-expenses')?.classList.toggle('btn-ghost', mode !== 'expenses');
   document.getElementById('exp-view-income')?.classList.toggle('btn-ghost', mode !== 'income');
   document.getElementById('exp-view-all')?.classList.toggle('btn-ghost', mode !== 'all');
+  document.getElementById('exp-view-eur')?.classList.add('btn-ghost');
+  renderExpenses();
+}
+
+function setExpCurrFilter(curr) {
+  if (expCurrFilter === curr) {
+    expCurrFilter = null;
+    document.getElementById('exp-view-eur')?.classList.add('btn-ghost');
+  } else {
+    expCurrFilter = curr;
+    document.getElementById('exp-view-eur')?.classList.remove('btn-ghost');
+  }
   renderExpenses();
 }
 
 function filterByCat(cat) {
+  expCurrFilter = null;
+  document.getElementById('exp-view-eur')?.classList.add('btn-ghost');
   expCatFilter = (expCatFilter === cat) ? null : cat;
   const badge = document.getElementById('exp-cat-filter-badge');
   if (badge) {
@@ -4183,6 +4291,15 @@ function renderExpenses() {
   else if (expViewMode === 'income') viewEntries = monthAll.filter(e => e.type === 'income');
   // Apply category filter
   if (expCatFilter) viewEntries = viewEntries.filter(e => e.cat === expCatFilter);
+  // Apply currency filter
+  if (expCurrFilter) viewEntries = viewEntries.filter(e => (e.curr || 'PLN') === expCurrFilter);
+  // Apply text search
+  const searchTerm = (document.getElementById('exp-search')?.value || '').trim().toLowerCase();
+  if (searchTerm) viewEntries = viewEntries.filter(e =>
+    e.desc.toLowerCase().includes(searchTerm) ||
+    (e.cat || '').toLowerCase().includes(searchTerm) ||
+    (e.subcat || '').toLowerCase().includes(searchTerm)
+  );
 
   // Update filter badge
   const badge = document.getElementById('exp-cat-filter-badge');
@@ -4360,6 +4477,7 @@ function renderMoMChart() {
   const data = months.map(ym => {
     const entries = expEntries.filter(e => {
       if (!e.date.startsWith(ym)) return false;
+      if (e.type === 'income') return false; // exclude income — expenses only
       return selectedCat === '__all__' || e.cat === selectedCat;
     });
     return entries.reduce((s,e)=>s+e.amount,0);
