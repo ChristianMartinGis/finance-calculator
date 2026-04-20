@@ -585,6 +585,69 @@
     </div>
   </div>
 
+  <!-- Financial Independence Tracker -->
+  <div class="card" style="margin-bottom:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div class="card-title" style="margin-bottom:2px;">Financial Independence Tracker</div>
+        <div style="font-size:11px;color:var(--text3);">Based on 25× annual expenses (4% rule) — mortgage payments included while active</div>
+      </div>
+      <div id="fi-badge" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:99px;background:var(--surface2);border:1px solid var(--border);color:var(--text3);">—</div>
+    </div>
+
+    <!-- Summary tiles row -->
+    <div class="grid-4" style="gap:8px;margin-bottom:16px;">
+      <div class="stat-tile"><div class="label">Current Net Worth</div><div class="value accent" id="fi-networth">—</div></div>
+      <div class="stat-tile"><div class="label">FI Target (25×)</div><div class="value gold" id="fi-target">—</div></div>
+      <div class="stat-tile"><div class="label">Progress</div><div class="value positive" id="fi-progress">—</div></div>
+      <div class="stat-tile"><div class="label">Est. Years to FI</div><div class="value" id="fi-years">—</div></div>
+    </div>
+
+    <!-- Chart -->
+    <canvas id="fi-chart" height="160" style="width:100%;margin-bottom:14px;"></canvas>
+
+    <!-- Context row -->
+    <div id="fi-context" style="font-size:11px;color:var(--text3);margin-bottom:10px;padding:8px 12px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);"></div>
+
+    <!-- Controls -->
+    <div style="border-top:1px solid var(--border);padding-top:12px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div class="form-group" style="margin:0;">
+          <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Monthly amount invested (zł)</label>
+          <div class="input-wrap"><span class="input-prefix">zł</span>
+            <input type="number" id="fi-invest" class="has-prefix" value="1000" min="0" step="100" oninput="renderFITracker()" placeholder="e.g. 2000">
+          </div>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px;">What you actually invest each month — not assumed from salary</div>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Expense inflation (%/yr)</label>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+            <input type="range" id="fi-inflation" min="0" max="8" step="0.5" value="3" oninput="document.getElementById('fi-inflation-lbl').textContent=this.value+'%';renderFITracker()" style="flex:1;">
+            <span id="fi-inflation-lbl" style="font-size:11px;font-weight:600;color:var(--accent);min-width:32px;">3%</span>
+          </div>
+          <div style="font-size:10px;color:var(--text3);">FI target grows with inflation each year</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group" style="margin:0;">
+          <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Annual investment return (%)</label>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+            <input type="range" id="fi-return" min="1" max="15" step="0.5" value="7" oninput="document.getElementById('fi-return-lbl').textContent=this.value+'%';renderFITracker()" style="flex:1;">
+            <span id="fi-return-lbl" style="font-size:11px;font-weight:600;color:var(--accent);min-width:32px;">7%</span>
+          </div>
+          <div style="font-size:10px;color:var(--text3);">Applied only to monthly investment + existing stocks</div>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Projection horizon</label>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+            <input type="range" id="fi-horizon" min="5" max="50" step="1" value="30" oninput="document.getElementById('fi-horizon-lbl').textContent=this.value+'y';renderFITracker()" style="flex:1;">
+            <span id="fi-horizon-lbl" style="font-size:11px;font-weight:600;color:var(--accent);min-width:28px;">30y</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- FX Rates — at the bottom, compact -->
   <div class="fx-bar" style="margin-bottom:0;">
     <span class="fx-label">EUR/PLN</span>
@@ -820,6 +883,59 @@
           <div><div class="label">Interest Saved</div><div class="val" id="op-int-saved">—</div></div>
           <div><div class="label">New Term</div><div class="val" id="op-new-term">—</div></div>
           <div><div class="label">New Monthly Total</div><div class="val" id="op-new-monthly">—</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Second Property (collapsible) -->
+  <div style="margin-top:16px;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+      <button onclick="toggleProperty2()" id="p2-toggle-btn" class="btn btn-ghost" style="font-size:12px;padding:5px 14px;">+ Add Second Property</button>
+      <span style="font-size:11px;color:var(--text3);" id="p2-toggle-note">Adds property 2 inputs — P1 monthly payment is automatically included in combined DTI</span>
+    </div>
+    <div id="property2-section" style="display:none;">
+      <div class="grid-2">
+        <div class="two-col-stack">
+          <div class="card">
+            <div class="card-title">Property 2 — Loan Details</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+              <label class="toggle"><input type="checkbox" id="m2-purchased" onchange="calcMortgage2()"><span class="toggle-slider"></span></label>
+              <span style="font-size:11px;color:var(--text2);">Property already purchased</span>
+            </div>
+            <div class="form-group"><label>Property Price</label><div class="curr-pair"><div class="input-wrap"><span class="input-prefix">zł</span><input type="number" id="m2-price" class="has-prefix" value="500000" oninput="calcMortgage2()"></div><select id="m2-price-curr" onchange="calcMortgage2()"><option>PLN</option><option>EUR</option></select></div></div>
+            <div class="form-group"><label>Down Payment</label><div class="curr-pair"><div class="input-wrap"><span class="input-prefix">zł</span><input type="number" id="m2-down" class="has-prefix" value="100000" oninput="calcMortgage2()"></div><select id="m2-down-curr" onchange="calcMortgage2()"><option>PLN</option><option>EUR</option></select></div></div>
+            <div class="form-group"><label>Annual Interest Rate: <span id="m2-rate-lbl" style="color:var(--accent)">5.5%</span></label><input type="range" id="m2-rate" min="0.5" max="12" step="0.1" value="5.5" oninput="document.getElementById('m2-rate-lbl').textContent=this.value+'%';calcMortgage2()"></div>
+            <div class="form-group"><label>Loan Term: <span id="m2-term-lbl" style="color:var(--accent)">25 years</span></label><input type="range" id="m2-term" min="5" max="40" step="1" value="25" oninput="document.getElementById('m2-term-lbl').textContent=this.value+' years';calcMortgage2()"></div>
+            <div class="form-group" style="margin-bottom:0;"><label>Mortgage Type</label><select id="m2-type" onchange="calcMortgage2()"><option value="repayment">Repayment</option><option value="interest">Interest Only</option></select></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Additional Monthly Costs</div>
+            <div class="form-group"><label>Tax / Admin</label><div class="curr-pair"><div class="input-wrap"><span class="input-prefix">zł</span><input type="number" id="m2-tax" class="has-prefix" value="300" oninput="calcMortgage2()"></div><select id="m2-tax-curr" onchange="calcMortgage2()"><option>PLN</option><option>EUR</option></select></div></div>
+            <div class="form-group"><label>Insurance</label><div class="curr-pair"><div class="input-wrap"><span class="input-prefix">zł</span><input type="number" id="m2-ins" class="has-prefix" value="200" oninput="calcMortgage2()"></div><select id="m2-ins-curr" onchange="calcMortgage2()"><option>PLN</option><option>EUR</option></select></div></div>
+            <div class="form-group" style="margin-bottom:0;"><label>Maintenance</label><div class="curr-pair"><div class="input-wrap"><span class="input-prefix">zł</span><input type="number" id="m2-maint" class="has-prefix" value="400" oninput="calcMortgage2()"></div><select id="m2-maint-curr" onchange="calcMortgage2()"><option>PLN</option><option>EUR</option></select></div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Affordability Check — Property 2</div>
+            <div id="afford-check-2"></div>
+          </div>
+        </div>
+        <div class="two-col-stack">
+          <div class="card">
+            <div class="card-title">Property 2 — Loan Summary (PLN)</div>
+            <div class="grid-2" style="gap:8px;margin-bottom:10px;">
+              <div class="stat-tile"><div class="label">Loan Amount</div><div class="value accent" id="m2-loan">zł0</div></div>
+              <div class="stat-tile"><div class="label">Monthly Payment</div><div class="value gold" id="m2-monthly">zł0</div></div>
+              <div class="stat-tile"><div class="label">Total Payment</div><div class="value neutral" id="m2-total">zł0</div></div>
+              <div class="stat-tile"><div class="label">Total Interest</div><div class="value negative" id="m2-int">zł0</div></div>
+              <div class="stat-tile"><div class="label">All-in Monthly</div><div class="value neutral" id="m2-allin">zł0</div><div class="sub">incl. tax, ins, maint</div></div>
+              <div class="stat-tile"><div class="label">LTV Ratio</div><div class="value neutral" id="m2-ltv">—</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Combined Amortization (Property 1 + 2)</div>
+            <div class="amort-wrap" style="max-height:280px;"><table class="amort-table"><thead><tr><th>Year</th><th>P1 Balance</th><th>P2 Balance</th><th>Combined Pay</th><th>Combined Int</th></tr></thead><tbody id="amort-body-combined"></tbody></table></div>
+          </div>
         </div>
       </div>
     </div>
@@ -2275,6 +2391,116 @@ function buildAmort(loan, mRate, n, pay, type, term) {
   }
 }
 
+// ── PROPERTY 2 ────────────────────────────────────────────────
+function toggleProperty2() {
+  const sec = document.getElementById('property2-section');
+  const btn = document.getElementById('p2-toggle-btn');
+  const note = document.getElementById('p2-toggle-note');
+  if (!sec) return;
+  const open = sec.style.display !== 'none';
+  sec.style.display = open ? 'none' : 'block';
+  btn.textContent = open ? '+ Add Second Property' : '− Remove Second Property';
+  note.textContent = open
+    ? 'Adds property 2 inputs — P1 monthly payment is automatically included in combined DTI'
+    : 'Property 2 active — combined DTI and amortization shown below';
+  if (!open) calcMortgage2();
+}
+
+function calcMortgage2() {
+  const price2 = toPLN(g('m2-price'), gs('m2-price-curr') || 'PLN');
+  const down2  = toPLN(g('m2-down'),  gs('m2-down-curr')  || 'PLN');
+  const annRate2 = g('m2-rate') / 100;
+  const mRate2   = annRate2 / 12;
+  const term2    = g('m2-term');
+  const n2       = term2 * 12;
+  const loan2    = Math.max(0, price2 - down2);
+  const type2    = document.getElementById('m2-type')?.value || 'repayment';
+  const extras2  = toPLN(g('m2-tax'), gs('m2-tax-curr')||'PLN') + toPLN(g('m2-ins'), gs('m2-ins-curr')||'PLN') + toPLN(g('m2-maint'), gs('m2-maint-curr')||'PLN');
+  const ltv2     = price2 > 0 ? loan2 / price2 * 100 : 0;
+
+  let monthly2 = 0;
+  if (type2 === 'repayment') monthly2 = mRate2 > 0 ? loan2*(mRate2*Math.pow(1+mRate2,n2))/(Math.pow(1+mRate2,n2)-1) : loan2/n2;
+  else monthly2 = loan2 * mRate2;
+
+  const totalPay2 = type2 === 'repayment' ? monthly2*n2 : monthly2*n2+loan2;
+  const totalInt2 = totalPay2 - loan2;
+  const allin2    = monthly2 + extras2;
+
+  document.getElementById('m2-loan').textContent    = fz(loan2);
+  document.getElementById('m2-monthly').textContent = fz(monthly2);
+  document.getElementById('m2-total').textContent   = fz(totalPay2);
+  document.getElementById('m2-int').textContent     = fz(totalInt2);
+  document.getElementById('m2-allin').textContent   = fz(allin2);
+  document.getElementById('m2-ltv').textContent     = ltv2.toFixed(1) + '%';
+
+  // Combined income (both salaries, same as P1)
+  const income1   = toPLN(g('m-salary1'),  gs('m-salary1-curr'));
+  const income2p  = toPLN(g('m-salary2'),  gs('m-salary2-curr'));
+  const combined  = income1 + income2p;
+
+  // P1 mortgage monthly payment (existing debt)
+  const m1Monthly = parseFloat(document.getElementById('m-monthly')?.textContent?.replace(/[^0-9.]/g,'')||'0') || 0;
+  const purchased1 = document.getElementById('m-purchased')?.checked;
+  const existingDebt = purchased1 ? m1Monthly : 0;
+
+  // DTI for P2 = (P1 existing + P2 new) / combined income
+  const combinedMonthly = existingDebt + monthly2;
+  const dtiCombined = combined > 0 ? combinedMonthly / combined * 100 : 0;
+  const dti2only    = combined > 0 ? monthly2 / combined * 100 : 0;
+  const lti2        = combined > 0 ? loan2 / (combined * 12) : 0;
+  const purchased2  = document.getElementById('m2-purchased')?.checked;
+
+  const affEl = document.getElementById('afford-check-2');
+  if (affEl) {
+    const badge = purchased2
+      ? '<div style="margin-bottom:8px;padding:6px 10px;background:rgba(77,204,140,.08);border:1px solid rgba(77,204,140,.2);border-radius:6px;font-size:10px;color:var(--positive);">✓ Property 2 marked as purchased.</div>'
+      : '<div style="margin-bottom:8px;padding:6px 10px;background:rgba(92,158,255,.08);border:1px solid rgba(92,158,255,.2);border-radius:6px;font-size:10px;color:var(--blue);">📊 Simulation — P1 existing debt included in combined DTI.</div>';
+    affEl.innerHTML = badge + `
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div class="stat-tile"><div class="label">P2 Mortgage-to-Income</div><div class="value ${dti2only<=28?'positive':dti2only<=36?'gold':'negative'}">${dti2only.toFixed(1)}%</div><div class="sub">P2 payment alone vs income</div></div>
+      <div class="stat-tile"><div class="label">Combined DTI (P1+P2)</div><div class="value ${dtiCombined<=36?'positive':dtiCombined<=45?'gold':'negative'}">${dtiCombined.toFixed(1)}%</div><div class="sub">${existingDebt>0?'Includes P1: '+fz(existingDebt)+'/mo':'No P1 mortgage active'}</div></div>
+      <div class="stat-tile"><div class="label">P2 Loan-to-Income</div><div class="value ${lti2<=4.5?'positive':lti2<=5.5?'gold':'negative'}">${lti2.toFixed(1)}×</div><div class="sub">P2 loan vs combined income</div></div>
+      <div class="stat-tile"><div class="label">P2 Down Payment</div><div class="value ${price2>0&&down2/price2>=0.2?'positive':'gold'}">${price2>0?(down2/price2*100).toFixed(1):0}%</div><div class="sub">${price2>0&&down2/price2>=0.2?'✓ 20%+ avoids insurance':'⚠ Below 20%'}</div></div>
+    </div>`;
+  }
+
+  // Combined amortization table
+  buildAmortCombined(
+    toPLN(g('m-price'),gs('m-price-curr')) - toPLN(g('m-down'),gs('m-down-curr')),
+    g('m-rate')/100/12, g('m-term')*12,
+    parseFloat(document.getElementById('m-monthly')?.textContent?.replace(/[^0-9.]/g,'')||'0')||0,
+    document.getElementById('m-type')?.value||'repayment',
+    g('m-term'),
+    loan2, mRate2, n2, monthly2, type2, term2
+  );
+}
+
+function buildAmortCombined(loan1, mRate1, n1, pay1, type1, term1, loan2, mRate2, n2, pay2, type2, term2) {
+  const tbody = document.getElementById('amort-body-combined');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  let bal1 = loan1, bal2 = loan2;
+  const maxYrs = Math.max(term1, term2);
+  for (let yr = 1; yr <= maxYrs; yr++) {
+    let yPay1=0, yI1=0, yPay2=0, yI2=0;
+    for (let m=0; m<12; m++) {
+      if (bal1 > 0) {
+        const i1 = bal1*mRate1;
+        const p1 = type1==='repayment' ? Math.min(pay1-i1,bal1) : 0;
+        yI1+=i1; yPay1+=pay1; bal1=Math.max(0,bal1-p1);
+      }
+      if (bal2 > 0) {
+        const i2 = bal2*mRate2;
+        const p2 = type2==='repayment' ? Math.min(pay2-i2,bal2) : 0;
+        yI2+=i2; yPay2+=pay2; bal2=Math.max(0,bal2-p2);
+      }
+    }
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>Yr ${yr}</td><td>${bal1>0?fz(Math.max(0,bal1)):'<span style="color:var(--positive)">✓ Paid</span>'}</td><td>${bal2>0?fz(Math.max(0,bal2)):'<span style="color:var(--positive)">✓ Paid</span>'}</td><td>${fz(yPay1+yPay2)}</td><td style="color:var(--negative)">${fz(yI1+yI2)}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
 // ── COMPARE ───────────────────────────────────────
 function syncCompare() {
   const mp = g('m-price'), md = g('m-down');
@@ -2509,6 +2735,7 @@ function updateOverview() {
   drawWealthBar(faTotal, sVal, equity);
   calcHealth(avgRate, combinedAvgInc, avgExp > 0 ? avgExp : totalExp, faTotal, sVal, mPrice, mDown);
   renderSavingsRateTrend();
+  renderFITracker();
   updateMonthComparison();
 }
 
@@ -3238,6 +3465,209 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── NBP LIVE RATES ────────────────────────────────
+
+// ── FINANCIAL INDEPENDENCE TRACKER ────────────────────────────
+function toggleHealthInfo() {
+  const el = document.getElementById('health-info');
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function renderFITracker() {
+  const cv = document.getElementById('fi-chart');
+  if (!cv) return;
+
+  // ── Inputs ──
+  const monthlyInvest = parseFloat(document.getElementById('fi-invest')?.value)    || 0;
+  const returnRate    = (parseFloat(document.getElementById('fi-return')?.value)    || 7)  / 100;
+  const inflationRate = (parseFloat(document.getElementById('fi-inflation')?.value) || 3)  / 100;
+  const horizonYrs    = parseInt(document.getElementById('fi-horizon')?.value)      || 30;
+
+  // ── Net worth split: cash savings (at account rate) vs stocks (at return rate) ──
+  let faTotal = 0, faWeightedRate = 0;
+  document.querySelectorAll('#fixed-accounts > div').forEach(r => {
+    const owner = r.getAttribute('data-owner') || 'p1';
+    const mult = ownerMultiplier(owner); if (mult === 0) return;
+    const inputs = r.querySelectorAll('input[type="number"]');
+    const curr = r.querySelector('.curr-badge')?.textContent || 'PLN';
+    const bal  = toPLN(parseFloat(inputs[0]?.value)||0, curr) * mult;
+    const rate = (parseFloat(inputs[1]?.value)||0) / 100;
+    faTotal += bal;
+    faWeightedRate += bal * rate;
+  });
+  const faAvgRate = faTotal > 0 ? faWeightedRate / faTotal : 0;
+
+  let stocksVal = 0;
+  document.querySelectorAll('#stock-tbody tr').forEach(r => {
+    const owner = r.getAttribute('data-owner') || 'p1';
+    const mult = ownerMultiplier(owner); if (mult === 0) return;
+    const inputs = r.querySelectorAll('input[type="number"]');
+    const curr = r.querySelector('.curr-badge')?.textContent || 'EUR';
+    const shares = (parseFloat(inputs[0]?.value)||0) * mult;
+    const cur = parseFloat(r.querySelector('.price-cell input')?.value)||0;
+    stocksVal += toPLN(shares * cur, curr);
+  });
+  const netWorth = faTotal + stocksVal;
+
+  // ── Avg monthly expenses & salary from transactions ──
+  const thisYear = ovViewMonth.slice(0,4);
+  const monthsExp = [...new Set(
+    expEntries.filter(e => e.type!=='income' && isOwnerVisible(e.owner||'p1') && e.date.startsWith(thisYear))
+              .map(e => e.date.slice(0,7))
+  )];
+  const avgMonthlyExp = monthsExp.length > 0
+    ? monthsExp.reduce((s,ym) => s +
+        expEntries.filter(e => e.type!=='income' && isOwnerVisible(e.owner||'p1') && e.date.startsWith(ym))
+                  .reduce((ss,e) => ss + e.amount * ownerMultiplier(e.owner||'p1'), 0), 0)
+      / monthsExp.length : 0;
+
+  const monthsSal = [...new Set(
+    expEntries.filter(e => e.type==='income' && e.cat==='Income' && e.subcat==='Salary'
+                        && isOwnerVisible(e.owner||'p1') && e.date.startsWith(thisYear))
+              .map(e => e.date.slice(0,7))
+  )];
+  const avgSalary = monthsSal.length > 0
+    ? monthsSal.reduce((s,ym) => s + getMonthSalaryForUser(ym, activeUser), 0) / monthsSal.length : 0;
+  const maxInvestable = Math.max(0, avgSalary - avgMonthlyExp);
+
+  // ── Mortgage (property 1) if purchased ──
+  const purchased1 = document.getElementById('m-purchased')?.checked;
+  const m1Monthly  = purchased1 ? (parseFloat(document.getElementById('m-monthly')?.textContent?.replace(/[^0-9.]/g,'')||'0')||0) : 0;
+  const m1Extras   = purchased1 ? toPLN(g('m-tax'),gs('m-tax-curr')) + toPLN(g('m-ins'),gs('m-ins-curr')) + toPLN(g('m-maint'),gs('m-maint-curr')) : 0;
+  const m1TermYrs  = purchased1 ? (g('m-term') || 25) : 0;
+  const m1TotalMo  = m1Monthly + m1Extras;
+
+  // ── Projection ──
+  // Net worth is split: fixed accounts grow at their own rate; stocks + new investment grow at returnRate
+  // FI target = 25 × annual expenses, growing at inflationRate each year
+  // Monthly investment only goes into the "invested" bucket (stocks bucket)
+  const annualExpBase0         = avgMonthlyExp * 12;
+  const annualExpWithMortgage0 = annualExpBase0 + m1TotalMo * 12;
+
+  const dataNetWorth = [], dataFITarget = [];
+  let cashBucket   = faTotal;    // grows at account rates
+  let investBucket = stocksVal;  // grows at returnRate + receives monthly investment
+  let fiYear = null;
+  let annualExpBase = annualExpBase0;
+  let annualExpWithMort = annualExpWithMortgage0;
+
+  for (let yr = 0; yr <= horizonYrs; yr++) {
+    const annExp = (purchased1 && yr < m1TermYrs) ? annualExpWithMort : annualExpBase;
+    const target = annExp * 25;
+    const totalNW = Math.round(cashBucket + investBucket);
+    dataNetWorth.push(totalNW);
+    dataFITarget.push(Math.round(target));
+    if (fiYear === null && totalNW >= target && yr > 0) fiYear = yr;
+
+    // Grow both buckets
+    cashBucket   = cashBucket   * (1 + faAvgRate);
+    investBucket = investBucket * (1 + returnRate) + monthlyInvest * 12;
+
+    // Grow expense targets by inflation
+    annualExpBase     *= (1 + inflationRate);
+    annualExpWithMort *= (1 + inflationRate);
+  }
+
+  // ── Context note ──
+  const ctxEl = document.getElementById('fi-context');
+  if (ctxEl) {
+    const parts = [];
+    if (avgSalary > 0) parts.push(`Avg salary: <strong>${fz(avgSalary)}/mo</strong>`);
+    if (avgMonthlyExp > 0) parts.push(`Avg expenses: <strong>${fz(avgMonthlyExp)}/mo</strong>`);
+    if (maxInvestable > 0) parts.push(`Max investable from salary: <strong>${fz(maxInvestable)}/mo</strong>`);
+    if (faAvgRate > 0) parts.push(`Cash earns <strong>${(faAvgRate*100).toFixed(1)}%</strong> avg`);
+    ctxEl.innerHTML = parts.length
+      ? parts.join(' · ')
+      : 'Add salary and expense transactions to see personalised context.';
+  }
+
+  // ── Update tiles ──
+  const curTarget = (purchased1 && m1TermYrs > 0) ? annualExpWithMortgage0 * 25 : annualExpBase0 * 25;
+  const progress  = curTarget > 0 ? netWorth / curTarget * 100 : 0;
+  document.getElementById('fi-networth').textContent = fz(netWorth);
+  document.getElementById('fi-target').textContent   = curTarget > 0 ? fz(curTarget) : '—';
+  document.getElementById('fi-progress').textContent = curTarget > 0 ? progress.toFixed(1) + '%' : '—';
+  const fyEl = document.getElementById('fi-years');
+  const fbEl = document.getElementById('fi-badge');
+  if (fiYear !== null) {
+    fyEl.textContent = fiYear + ' yrs';
+    fyEl.style.color = fiYear <= 15 ? 'var(--positive)' : fiYear <= 25 ? 'var(--accent)' : 'var(--orange)';
+    fbEl.textContent = 'FI in ~' + (new Date().getFullYear() + fiYear);
+    fbEl.style.background = 'rgba(29,78,216,.1)'; fbEl.style.color = 'var(--accent)'; fbEl.style.borderColor = 'rgba(29,78,216,.3)';
+  } else {
+    fyEl.textContent = '>' + horizonYrs + 'y'; fyEl.style.color = 'var(--negative)';
+    fbEl.textContent = 'Beyond ' + horizonYrs + 'y horizon';
+    fbEl.style.background = 'var(--surface2)'; fbEl.style.color = 'var(--text3)'; fbEl.style.borderColor = 'var(--border)';
+  }
+
+  // ── Draw chart ──
+  const W = cv.offsetWidth || 700, H = 180;
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  const pad = {t:18,r:16,b:32,l:76};
+  const cw = W-pad.l-pad.r, ch = H-pad.t-pad.b;
+  const maxVal = Math.max(...dataNetWorth, ...dataFITarget, 1) * 1.05;
+  const xP = i => pad.l + (i/horizonYrs)*cw;
+  const yP = v => pad.t + ch - Math.min(ch, Math.max(0, v/maxVal*ch));
+
+  // Grid
+  ctx.strokeStyle='#e0e5ef'; ctx.lineWidth=1;
+  for (let i=0;i<=4;i++) {
+    const y = pad.t+(ch/4)*i;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
+    ctx.fillStyle='#8a96aa'; ctx.font="9px 'DM Mono'"; ctx.textAlign='right';
+    ctx.fillText(fz(maxVal*(1-i/4)), pad.l-4, y+3);
+  }
+
+  // Mortgage payoff marker
+  if (purchased1 && m1TermYrs > 0 && m1TermYrs <= horizonYrs) {
+    const mx = xP(m1TermYrs);
+    ctx.strokeStyle='#059669'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(mx,pad.t+12); ctx.lineTo(mx,H-pad.b); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle='#059669'; ctx.font="bold 8px 'DM Sans'"; ctx.textAlign='center';
+    ctx.fillText('Mortgage paid', mx, pad.t+10);
+  }
+
+  // FI target line (dashed gold, growing with inflation)
+  ctx.strokeStyle='#d97706'; ctx.lineWidth=1.5; ctx.setLineDash([5,3]);
+  ctx.beginPath();
+  dataFITarget.forEach((v,i) => i===0?ctx.moveTo(xP(i),yP(v)):ctx.lineTo(xP(i),yP(v)));
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // Net worth area fill
+  ctx.fillStyle='rgba(29,78,216,.08)';
+  ctx.beginPath(); ctx.moveTo(xP(0),H-pad.b);
+  dataNetWorth.forEach((v,i) => ctx.lineTo(xP(i),yP(v)));
+  ctx.lineTo(xP(horizonYrs),H-pad.b); ctx.fill();
+
+  // Net worth line
+  ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2.5; ctx.lineJoin='round';
+  ctx.beginPath();
+  dataNetWorth.forEach((v,i) => i===0?ctx.moveTo(xP(i),yP(v)):ctx.lineTo(xP(i),yP(v)));
+  ctx.stroke();
+
+  // FI crossover dot + label
+  if (fiYear !== null && fiYear <= horizonYrs) {
+    ctx.fillStyle='#059669';
+    ctx.beginPath(); ctx.arc(xP(fiYear),yP(dataNetWorth[fiYear]),5,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#059669'; ctx.font="bold 9px 'DM Mono'"; ctx.textAlign='center';
+    ctx.fillText('FI! (' + (new Date().getFullYear()+fiYear) + ')', xP(fiYear), yP(dataNetWorth[fiYear])-9);
+  }
+
+  // X axis labels
+  ctx.fillStyle='#8a96aa'; ctx.font="9px 'DM Mono'"; ctx.textAlign='center';
+  const step = horizonYrs <= 10 ? 1 : horizonYrs <= 20 ? 5 : horizonYrs <= 35 ? 5 : 10;
+  for (let i=0;i<=horizonYrs;i+=step) ctx.fillText(new Date().getFullYear()+i, xP(i), H-6);
+
+  // Legend
+  const lx = pad.l;
+  ctx.font="10px 'DM Sans'"; ctx.textAlign='left';
+  ctx.fillStyle='#1d4ed8'; ctx.fillRect(lx,H-pad.b+8,14,3);
+  ctx.fillStyle='#5a6a8a'; ctx.fillText('Net Worth (cash + investments)', lx+18, H-pad.b+12);
+  ctx.fillStyle='#d97706'; ctx.fillRect(lx+200,H-pad.b+8,14,3);
+  ctx.fillText('FI Target (25× expenses, +' + (inflationRate*100).toFixed(0) + '%/yr)', lx+218, H-pad.b+12);
+}
+
 
 async function fetchNBPRates() {
   const tsEl = document.getElementById('nbp-ts');
