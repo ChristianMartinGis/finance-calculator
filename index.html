@@ -290,6 +290,16 @@
   .ai-generate-btn:disabled { opacity: .6; cursor: not-allowed; }
   .ai-typing { display: inline-block; width: 6px; height: 14px; background: var(--accent); border-radius: 1px; animation: blink .8s step-end infinite; margin-left: 2px; vertical-align: text-bottom; }
   @keyframes blink { 50% { opacity: 0; } }
+  /* PERSON SWITCHER */
+  .person-switcher { display:flex; align-items:center; gap:3px; background:var(--surface2); border:1px solid var(--border); border-radius:99px; padding:3px; }
+  .person-btn { border:none; border-radius:99px; font-family:'DM Sans',sans-serif; font-size:11px; font-weight:600; padding:4px 12px; cursor:pointer; transition:all .15s; background:transparent; color:var(--text3); white-space:nowrap; }
+  .person-btn:hover { color:var(--text2); background:var(--surface3); }
+  .person-btn.active { background:var(--accent); color:#fff; box-shadow:0 1px 3px rgba(29,78,216,.3); }
+  .person-btn.together.active { background:var(--purple); box-shadow:0 1px 3px rgba(124,58,237,.3); }
+  .owner-tag { display:inline-block; font-size:9px; font-weight:700; padding:1px 5px; border-radius:3px; margin-left:4px; vertical-align:middle; }
+  .owner-p1 { background:rgba(29,78,216,.12); color:var(--accent); }
+  .owner-p2 { background:rgba(124,58,237,.12); color:var(--purple); }
+  .owner-shared { background:rgba(5,150,105,.12); color:var(--positive); }
   /* PORTFOLIO DONUT */
   .portfolio-ai-content { font-size: 12px; color: var(--text2); line-height: 1.7; }
   /* BACKUP REMINDER */
@@ -407,7 +417,13 @@
     <button class="tab-btn" onclick="switchTab('compare',this)">Rent vs Buy</button>
     <button class="tab-btn" onclick="switchTab('goals',this)">Goals</button>
   </nav>
-  <div style="display:flex;align-items:center;gap:6px;padding-bottom:12px;padding-left:12px;flex-shrink:0;position:relative;">
+  <div style="display:flex;align-items:center;gap:8px;padding-bottom:12px;padding-left:12px;flex-shrink:0;position:relative;">
+    <!-- Person switcher — hidden in single mode -->
+    <div id="person-switcher" class="person-switcher" style="display:none;">
+      <button id="pbtn-p1" class="person-btn active" onclick="setActiveUser('p1')">Me</button>
+      <button id="pbtn-p2" class="person-btn" onclick="setActiveUser('p2')">Partner</button>
+      <button id="pbtn-together" class="person-btn together" onclick="setActiveUser('together')">Together</button>
+    </div>
     <span id="hfx-eur" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);white-space:nowrap;">€1=—</span>
     <span style="font-size:10px;color:var(--border2);">|</span>
     <span id="hfx-usd" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);white-space:nowrap;">$1=—</span>
@@ -421,6 +437,8 @@
       <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);padding:4px 10px 6px;">Import data</div>
       <label class="sync-menu-item" style="cursor:pointer;">📂 Load from file<input type="file" accept=".json" style="display:none;" onchange="importAllData(this)"></label>
+      <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
+      <button class="sync-menu-item" onclick="openPeopleSettings();closeSyncMenu()">👥 People & Couple Mode</button>
     </div>
   </div>
 </header>
@@ -915,6 +933,14 @@
           <option value="income">Income</option>
         </select>
       </div>
+      <div class="form-group" style="margin:0;" id="exp-owner-group" style="display:none;">
+        <label>Owner</label>
+        <select id="exp-owner" style="font-family:'DM Sans',sans-serif;">
+          <option value="p1">Me</option>
+          <option value="p2">Partner</option>
+          <option value="shared">Shared (÷2)</option>
+        </select>
+      </div>
       <div class="form-group" style="margin:0;">
         <div id="exp-hist-hint" style="display:none;margin-bottom:4px;font-size:10px;color:var(--positive);padding:3px 6px;background:rgba(5,150,105,.08);border-radius:4px;border:1px solid rgba(5,150,105,.2);"></div>
         <label>Description</label>
@@ -1021,6 +1047,39 @@
         </div>
         <div class="cat-manager" id="cat-manager"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ PEOPLE SETTINGS MODAL ══════ -->
+<div id="people-modal" class="modal-backdrop" style="display:none;">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <div class="modal-title">People & Couple Mode</div>
+      <button class="btn-icon" onclick="closePeopleSettings()" style="font-size:16px;">×</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);">
+        <label class="toggle"><input type="checkbox" id="couple-mode-toggle" onchange="toggleCoupleMode(this.checked)"><span class="toggle-slider"></span></label>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);">Couple Mode</div>
+          <div style="font-size:11px;color:var(--text3);">Track finances for two people, see individual or combined view</div>
+        </div>
+      </div>
+      <div id="couple-settings-fields">
+        <div class="form-group">
+          <label>Person 1 name (you)</label>
+          <input type="text" id="p1-name-input" placeholder="e.g. Christian" style="font-family:'DM Sans',sans-serif;">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Person 2 name (partner)</label>
+          <input type="text" id="p2-name-input" placeholder="e.g. Ania" style="font-family:'DM Sans',sans-serif;">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closePeopleSettings()">Cancel</button>
+      <button class="btn" onclick="savePeopleSettings()">Save</button>
     </div>
   </div>
 </div>
@@ -1241,6 +1300,147 @@ function initAllPrefixes() {
   });
 }
 
+// ── COUPLE MODE ──────────────────────────────────────────────
+const COUPLE_KEY = 'fc_couple_v1';
+let coupleMode  = false;
+let activeUser  = 'p1';  // 'p1' | 'p2' | 'together'
+let p1Name      = 'Me';
+let p2Name      = 'Partner';
+
+function loadCoupleState() {
+  try {
+    const raw = localStorage.getItem(COUPLE_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    coupleMode = !!s.coupleMode;
+    activeUser = s.activeUser || 'p1';
+    p1Name     = s.p1Name || 'Me';
+    p2Name     = s.p2Name || 'Partner';
+  } catch(e) {}
+}
+
+function saveCoupleState() {
+  try {
+    localStorage.setItem(COUPLE_KEY, JSON.stringify({ coupleMode, activeUser, p1Name, p2Name }));
+  } catch(e) {}
+}
+
+// Returns the effective multiplier for an owner given the activeUser:
+// own items = 1.0, shared items = 0.5 in individual view, 1.0 in together
+// other person's items = 0 in individual view, 1.0 in together
+function ownerMultiplier(owner) {
+  if (!coupleMode) return 1;
+  if (activeUser === 'together') return 1;
+  if (owner === 'shared') return 0.5;
+  if (owner === activeUser) return 1;
+  return 0; // other person's item
+}
+
+function isOwnerVisible(owner) {
+  if (!coupleMode) return true;
+  if (activeUser === 'together') return true;
+  if (owner === 'shared') return true;
+  return owner === activeUser;
+}
+
+function setActiveUser(who) {
+  activeUser = who;
+  saveCoupleState();
+  applyPersonSwitcher();
+  recalcAll();
+  renderExpenses();
+}
+
+function applyPersonSwitcher() {
+  const sw = document.getElementById('person-switcher');
+  if (sw) sw.style.display = coupleMode ? 'flex' : 'none';
+
+  // Update button labels with names
+  const bp1 = document.getElementById('pbtn-p1');
+  const bp2 = document.getElementById('pbtn-p2');
+  const btg = document.getElementById('pbtn-together');
+  if (bp1) bp1.textContent = p1Name;
+  if (bp2) bp2.textContent = p2Name;
+  if (btg) btg.textContent = 'Together';
+
+  // Active state
+  [['pbtn-p1','p1'],['pbtn-p2','p2'],['pbtn-together','together']].forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.toggle('active', activeUser === val);
+      if (val === 'together') el.classList.toggle('together', activeUser === val);
+    }
+  });
+
+  // Update quick-add owner dropdown labels
+  const expOwnerSel = document.getElementById('exp-owner');
+  if (expOwnerSel) {
+    if (expOwnerSel.options[0]) expOwnerSel.options[0].text = p1Name;
+    if (expOwnerSel.options[1]) expOwnerSel.options[1].text = p2Name;
+  }
+
+  // Show/hide owner group in quick-add
+  const og = document.getElementById('exp-owner-group');
+  if (og) og.style.display = coupleMode ? '' : 'none';
+
+  // Pre-select the active user in quick-add owner dropdown
+  const eo = document.getElementById('exp-owner');
+  if (eo && coupleMode) {
+    eo.value = activeUser === 'together' ? 'shared' : activeUser;
+  }
+
+  // Show/hide owner columns header in savings tab
+  updateOwnerVisibility();
+}
+
+function updateOwnerVisibility() {
+  // No per-row owner dropdowns anymore — ownership handled via data-owner attribute
+}
+
+function openPeopleSettings() {
+  document.getElementById('couple-mode-toggle').checked = coupleMode;
+  document.getElementById('p1-name-input').value = p1Name === 'Me' ? '' : p1Name;
+  document.getElementById('p2-name-input').value = p2Name === 'Partner' ? '' : p2Name;
+  document.getElementById('people-modal').style.display = 'flex';
+}
+
+function closePeopleSettings() {
+  document.getElementById('people-modal').style.display = 'none';
+}
+
+function toggleCoupleMode(on) {
+  // Just preview in modal, save happens on Save button
+}
+
+function savePeopleSettings() {
+  const wasCouple = coupleMode;
+  coupleMode = document.getElementById('couple-mode-toggle').checked;
+  const n1 = document.getElementById('p1-name-input').value.trim();
+  const n2 = document.getElementById('p2-name-input').value.trim();
+  p1Name = n1 || 'Me';
+  p2Name = n2 || 'Partner';
+  if (!coupleMode) activeUser = 'p1';
+
+  // If enabling couple mode for the first time, assign all existing transactions to p1
+  if (coupleMode && !wasCouple) {
+    expEntries.forEach(e => { if (!e.owner) e.owner = 'p1'; });
+    saveExpenses();
+    // Assign all fixed accounts and stocks to p1 if no owner set
+    document.querySelectorAll('#fixed-accounts > div').forEach(div => {
+      if (!div.getAttribute('data-owner')) div.setAttribute('data-owner', 'p1');
+    });
+    document.querySelectorAll('#stock-tbody tr').forEach(tr => {
+      if (!tr.getAttribute('data-owner')) tr.setAttribute('data-owner', 'p1');
+    });
+  }
+
+  saveCoupleState();
+  applyPersonSwitcher();
+  closePeopleSettings();
+  recalcAll();
+  renderExpenses();
+}
+
 function recalcAll() {
   calcBudget(); calcSavings(); calcMortgage(); calcCompare(); updateOverview();
   const eur = parseFloat(document.getElementById('fx-rate')?.value) || 4.2793;
@@ -1304,10 +1504,11 @@ function drawDonut(cats, total) {
 }
 
 // ── SAVINGS ───────────────────────────────────────
-function addFixedAcc(name='', balance=0, rate=3, curr='PLN') {
+function addFixedAcc(name='', balance=0, rate=3, curr='PLN', owner='p1') {
   const container = document.getElementById('fixed-accounts');
   const isEur = curr === 'EUR';
   const div = document.createElement('div');
+  div.setAttribute('data-owner', owner);
   div.style.cssText = 'display:grid;grid-template-columns:1fr 90px 60px 60px 28px;gap:5px;align-items:center;margin-bottom:6px;';
   div.innerHTML = `
     <input type="text" value="${name}" placeholder="Account name" oninput="calcSavings()" style="font-family:'DM Sans',sans-serif;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text2);padding:5px 7px;outline:none;transition:border-color .15s;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
@@ -1328,12 +1529,13 @@ function toggleFACurr(badge, e) {
   calcSavings();
 }
 
-function addStockRow(ticker='', shares=0, avgBuy=0, current=0, curr='USD') {
+function addStockRow(ticker='', shares=0, avgBuy=0, current=0, curr='USD', owner='p1') {
   const tbody = document.getElementById('stock-tbody');
   const tr = document.createElement('tr');
   curr = curr.toUpperCase();
   const badgeClass = curr === 'EUR' ? 'eur' : curr === 'USD' ? 'usd' : 'pln';
   tr.setAttribute('data-ticker', ticker.toUpperCase());
+  tr.setAttribute('data-owner', owner);
   tr.innerHTML = `
     <td><input type="text" value="${ticker}" placeholder="AAPL" oninput="this.closest('tr').setAttribute('data-ticker',this.value.toUpperCase());calcSavings()" style="width:56px;text-transform:uppercase;font-size:11px;"></td>
     <td><input type="number" value="${shares}" oninput="calcSavings()" style="width:52px;"></td>
@@ -1455,18 +1657,21 @@ function renderPortfolioDonut() {
   const container = document.getElementById('portfolio-weight-chart');
   if (!container) return;
 
-  const rows = [...document.querySelectorAll('#stock-tbody tr')];
-  if (!rows.length) { container.innerHTML = ''; return; }
+  const allRows = [...document.querySelectorAll('#stock-tbody tr')];
+  const rows = allRows.filter(tr => ownerMultiplier(tr.getAttribute('data-owner') || 'p1') > 0);
+  if (!rows.length) { container.innerHTML = '<div style="font-size:11px;color:var(--text3);">No stock positions for this view.</div>'; return; }
 
   const COLORS = [
     '#1d4ed8','#059669','#d97706','#dc2626','#7c3aed',
     '#0891b2','#db2777','#65a30d','#ea580c','#9333ea','#16a34a','#0284c7'
   ];
 
-  // Build data
+  // Build data — apply ownerMultiplier to shares
   const data = rows.map((tr, i) => {
+    const owner  = tr.getAttribute('data-owner') || 'p1';
+    const mult   = ownerMultiplier(owner);
     const inputs = tr.querySelectorAll('input[type="number"]');
-    const shares  = parseFloat(inputs[0]?.value) || 0;
+    const shares  = (parseFloat(inputs[0]?.value) || 0) * mult;
     const avgBuy  = parseFloat(inputs[1]?.value) || 0;
     const current = parseFloat(tr.querySelector('.price-cell input')?.value) || 0;
     const curr    = tr.querySelector('.curr-badge')?.textContent || 'USD';
@@ -1585,14 +1790,19 @@ const SECTOR_ETFS = {
 
 function getPortfolioHoldings() {
   const rows = [...document.querySelectorAll('#stock-tbody tr')];
-  return rows.map(tr => {
+  return rows.filter(tr => {
+    const owner = tr.getAttribute('data-owner') || 'p1';
+    return ownerMultiplier(owner) > 0;
+  }).map(tr => {
+    const owner  = tr.getAttribute('data-owner') || 'p1';
+    const mult   = ownerMultiplier(owner);
     const inputs = tr.querySelectorAll('input[type="number"]');
-    const shares  = parseFloat(inputs[0]?.value) || 0;
+    const shares  = (parseFloat(inputs[0]?.value) || 0) * mult;
     const avgBuy  = parseFloat(inputs[1]?.value) || 0;
     const current = parseFloat(tr.querySelector('.price-cell input')?.value) || 0;
     const curr    = tr.querySelector('.curr-badge')?.textContent || 'USD';
     const value   = toPLN(shares * current, curr);
-    const cost    = toPLN(shares * avgBuy, curr);
+    const cost    = toPLN(shares * avgBuy,  curr);
     const pnlPct  = avgBuy > 0 && cost > 0 ? (value - cost) / cost * 100 : null;
     const ticker  = (tr.getAttribute('data-ticker') || '?').toUpperCase();
     return { ticker, shares, avgBuy, current, curr, valuePLN: Math.round(value), costPLN: Math.round(cost), pnlPct,
@@ -1795,13 +2005,26 @@ function getDivYield(ticker) {
 }
 
 function calcSavings() {
+  // Show/hide savings rows based on active user (couple mode)
+  document.querySelectorAll('#fixed-accounts > div').forEach(r => {
+    const owner = r.getAttribute('data-owner') || 'p1';
+    r.style.display = isOwnerVisible(owner) ? 'grid' : 'none';
+  });
+  document.querySelectorAll('#stock-tbody tr').forEach(r => {
+    const owner = r.getAttribute('data-owner') || 'p1';
+    r.style.display = isOwnerVisible(owner) ? '' : 'none';
+  });
+
   const cpiOn = document.getElementById('cpi-toggle-savings')?.checked;
   const cpi = (parseFloat(document.getElementById('cpi-rate-savings')?.value) || 2.5) / 100;
   let faTotal = 0, faYearly = 0;
   document.querySelectorAll('#fixed-accounts > div').forEach(r => {
+    const owner = r.getAttribute('data-owner') || 'p1';
+    const mult = ownerMultiplier(owner);
+    if (mult === 0) return;
     const inputs = r.querySelectorAll('input[type="number"]');
     const curr = r.querySelector('.curr-badge')?.textContent || 'PLN';
-    const bal = toPLN(parseFloat(inputs[0]?.value) || 0, curr);
+    const bal = toPLN(parseFloat(inputs[0]?.value) || 0, curr) * mult;
     const rate = parseFloat(inputs[1]?.value) || 0;
     faTotal += bal; faYearly += bal * rate / 100;
   });
@@ -1826,10 +2049,13 @@ function calcSavings() {
 
   let sCost = 0, sVal = 0, sDivIncome = 0;
   document.querySelectorAll('#stock-tbody tr').forEach(r => {
+    const owner  = r.getAttribute('data-owner') || 'p1';
+    const mult   = ownerMultiplier(owner);
+    if (mult === 0) return;
     const inputs = r.querySelectorAll('input[type="number"]');
     const curr   = r.querySelector('.curr-badge')?.textContent || 'EUR';
     const ticker = (r.getAttribute('data-ticker') || '').toUpperCase();
-    const shares = parseFloat(inputs[0]?.value) || 0;
+    const shares = (parseFloat(inputs[0]?.value) || 0) * mult;
     const avg    = parseFloat(inputs[1]?.value) || 0;
     const cur    = parseFloat(r.querySelector('.price-cell input')?.value) || 0;
     const cost   = toPLN(shares * avg, curr);
@@ -2141,60 +2367,68 @@ function drawCmpChart(rData, bData, years, cpiOn=false) {
 
 // ── OVERVIEW ──────────────────────────────────────
 function getMonthSalary(ym) {
-  // Sum transactions with cat='Income' and subcat='Salary' for a given YYYY-MM
   return expEntries
     .filter(e => e.type === 'income' && e.date.startsWith(ym) &&
                  e.cat === 'Income' && e.subcat === 'Salary')
     .reduce((s, e) => s + e.amount, 0);
 }
 
+function getMonthSalaryForUser(ym, user) {
+  if (!coupleMode) return getMonthSalary(ym);
+  return expEntries
+    .filter(e => e.type === 'income' && e.date.startsWith(ym) &&
+                 e.cat === 'Income' && e.subcat === 'Salary' &&
+                 isOwnerVisible(e.owner || 'p1'))
+    .reduce((s, e) => s + e.amount * ownerMultiplier(e.owner || 'p1'), 0);
+}
+
 function updateOverview() {
-  // ── Derive income from transactions (Salary entries) ──
-  const selMonth = ovViewMonth; // follow the month navigation
-  const income = getMonthSalary(selMonth);
-
+  const selMonth = ovViewMonth;
+  const income = getMonthSalaryForUser(selMonth, activeUser);
   const partner2 = toPLN(g('m-salary2'), gs('m-salary2-curr'));
-  const combinedInc = income + partner2; // single-month (for Saved tile)
+  const combinedInc = income + partner2;
 
-  // ── Expenses for selected month ──
-  const monthExpenses = expEntries.filter(e => e.type !== 'income' && e.date.startsWith(selMonth));
-  const totalExp = monthExpenses.reduce((s, e) => s + e.amount, 0);
-
+  // Expenses for selected month — filtered by owner
+  const monthExpenses = expEntries.filter(e => e.type !== 'income' && e.date.startsWith(selMonth) && isOwnerVisible(e.owner || 'p1'));
+  const totalExp = monthExpenses.reduce((s, e) => s + e.amount * ownerMultiplier(e.owner || 'p1'), 0);
   const sav  = income - totalExp;
   const rate = income > 0 ? sav / income * 100 : 0;
 
-  // ── Yearly averages (months with any data this calendar year) ──
+  // Yearly averages
   const thisYear = selMonth.slice(0, 4);
   const monthsWithSalary = [...new Set(
-    expEntries.filter(e => e.type === 'income' && e.cat === 'Income' &&
-                           e.subcat === 'Salary' && e.date.startsWith(thisYear))
-              .map(e => e.date.slice(0, 7))
+    expEntries.filter(e => e.type==='income' && e.cat==='Income' && e.subcat==='Salary' && isOwnerVisible(e.owner||'p1') && e.date.startsWith(thisYear))
+              .map(e => e.date.slice(0,7))
   )];
   const monthsWithExp = [...new Set(
-    expEntries.filter(e => e.type !== 'income' && e.date.startsWith(thisYear))
-              .map(e => e.date.slice(0, 7))
+    expEntries.filter(e => e.type !== 'income' && isOwnerVisible(e.owner||'p1') && e.date.startsWith(thisYear))
+              .map(e => e.date.slice(0,7))
   )];
   const avgIncome = monthsWithSalary.length > 0
-    ? monthsWithSalary.reduce((s, ym) => s + getMonthSalary(ym), 0) / monthsWithSalary.length
-    : 0;
+    ? monthsWithSalary.reduce((s,ym) => s + getMonthSalaryForUser(ym, activeUser), 0) / monthsWithSalary.length : 0;
   const avgExp = monthsWithExp.length > 0
-    ? monthsWithExp.reduce((s, ym) => s +
-        expEntries.filter(e => e.type !== 'income' && e.date.startsWith(ym))
-                  .reduce((ss, e) => ss + e.amount, 0), 0) / monthsWithExp.length
-    : 0;
+    ? monthsWithExp.reduce((s,ym) => s +
+        expEntries.filter(e => e.type!=='income' && isOwnerVisible(e.owner||'p1') && e.date.startsWith(ym))
+                  .reduce((ss,e) => ss + e.amount * ownerMultiplier(e.owner||'p1'), 0), 0) / monthsWithExp.length : 0;
 
-  // ── Wealth ──
+  // Wealth
   let faTotal = 0;
   document.querySelectorAll('#fixed-accounts > div').forEach(r => {
+    const owner = r.getAttribute('data-owner') || 'p1';
+    const mult = ownerMultiplier(owner);
+    if (mult === 0) return;
     const inputs = r.querySelectorAll('input[type="number"]');
     const curr = r.querySelector('.curr-badge')?.textContent || 'PLN';
-    faTotal += toPLN(parseFloat(inputs[0]?.value)||0, curr);
+    faTotal += toPLN(parseFloat(inputs[0]?.value)||0, curr) * mult;
   });
   let sVal = 0;
   document.querySelectorAll('#stock-tbody tr').forEach(r => {
+    const owner = r.getAttribute('data-owner') || 'p1';
+    const mult = ownerMultiplier(owner);
+    if (mult === 0) return;
     const inputs = r.querySelectorAll('input[type="number"]');
     const curr = r.querySelector('.curr-badge')?.textContent || 'EUR';
-    const shares = parseFloat(inputs[0]?.value) || 0;
+    const shares = (parseFloat(inputs[0]?.value) || 0) * mult;
     const curPrice = parseFloat(r.querySelector('.price-cell input')?.value) || 0;
     sVal += toPLN(shares * curPrice, curr);
   });
@@ -2206,27 +2440,23 @@ function updateOverview() {
   const faCnt = document.querySelectorAll('#fixed-accounts > div').length;
   const stCnt = document.querySelectorAll('#stock-tbody tr').length;
 
-  // ── Update tiles ──
   const fmtMon = ym => new Date(ym+'-01').toLocaleDateString('en-GB',{month:'short',year:'numeric'});
 
-  document.getElementById('ov-income').textContent = income > 0 ? fz(income) : '—';
+  document.getElementById('ov-income').textContent = income > 0 ? fz(income) : (avgIncome > 0 ? fz(avgIncome) : '—');
   document.getElementById('ov-income-sub').textContent = avgIncome > 0
-    ? `avg ${fz(avgIncome)}/mo (${monthsWithSalary.length}mo)`
-    : 'no salary logged yet';
+    ? `avg ${fz(avgIncome)}/mo (${monthsWithSalary.length}mo)` : 'no salary logged yet';
 
-  document.getElementById('ov-expenses').textContent = totalExp > 0 ? fz(totalExp) : '—';
+  document.getElementById('ov-expenses').textContent = fz(totalExp);
   document.getElementById('ov-exp-sub').textContent = avgExp > 0
-    ? `avg ${fz(avgExp)}/mo (${monthsWithExp.length}mo)`
-    : 'no expenses logged yet';
+    ? `avg ${fz(avgExp)}/mo (${monthsWithExp.length}mo)` : monthExpenses.length > 0 ? fz(totalExp) + ' this month' : 'no expenses logged yet';
 
   const savEl = document.getElementById('ov-free');
   if (savEl) {
-    savEl.textContent = income > 0 || totalExp > 0 ? fzS(sav) : '—';
+    savEl.textContent = fzS(sav);
     savEl.style.color = sav >= 0 ? 'var(--positive)' : 'var(--negative)';
   }
-  document.getElementById('ov-rate-sub').textContent = rate > 0
-    ? rate.toFixed(1) + '% savings rate'
-    : fmtMon(selMonth);
+  document.getElementById('ov-rate-sub').textContent = income > 0 && rate !== 0
+    ? rate.toFixed(1) + '% savings rate' : fmtMon(selMonth);
 
   document.getElementById('ov-networth').textContent = fz(netWorth);
   document.getElementById('ov-fixed').textContent = fz(faTotal);
@@ -2235,30 +2465,35 @@ function updateOverview() {
   document.getElementById('ov-stocks-sub').textContent = stCnt + ' position' + (stCnt!==1?'s':'');
   document.getElementById('ov-equity').textContent = purchased && mPrice > 0 ? fz(equity) : '—';
 
-  // Auto-populate m-salary1 with avg salary if blank or not yet user-edited
+  // Auto-populate m-salary1
   const sal1El = document.getElementById('m-salary1');
   if (sal1El) {
-    const current1 = parseFloat(sal1El.value) || 0;
     const avg = avgIncome > 0 ? avgIncome : income;
-    // Fill if blank, or if value matches a previous auto-fill (within 1 PLN tolerance)
     const lastAutoFill = parseFloat(sal1El.dataset.lastAuto || '0');
-    if (current1 === 0 || Math.abs(current1 - lastAutoFill) < 1) {
-      sal1El.value = Math.round(avg);
-      sal1El.dataset.lastAuto = Math.round(avg);
+    if ((parseFloat(sal1El.value)||0)===0 || Math.abs((parseFloat(sal1El.value)||0)-lastAutoFill)<1) {
+      sal1El.value = Math.round(avg); sal1El.dataset.lastAuto = Math.round(avg);
     }
-    // Update the note with avg context
     const noteEl = document.getElementById('m-salary1-note');
-    if (noteEl && avgIncome > 0) {
-      noteEl.textContent = `Auto-filled from avg salary: ${fz(avgIncome)}/mo (${monthsWithSalary.length}mo) — edit to override.`;
+    const who = coupleMode ? p1Name : 'you';
+    if (noteEl) noteEl.textContent = avgIncome > 0
+      ? `Auto-filled from ${who}'s avg salary: ${fz(avgIncome)}/mo (${monthsWithSalary.length}mo) — edit to override.`
+      : 'No salary transactions found yet.';
+  }
+  if (coupleMode && activeUser === 'together') {
+    const sal2El = document.getElementById('m-salary2');
+    if (sal2El) {
+      const yr = selMonth.slice(0,4);
+      const p2E = expEntries.filter(e=>e.type==='income'&&e.cat==='Income'&&e.subcat==='Salary'&&(e.owner||'p1')==='p2'&&e.date.startsWith(yr));
+      const p2M = [...new Set(p2E.map(e=>e.date.slice(0,7)))];
+      const p2Avg = p2M.length>0?p2M.reduce((s,ym)=>s+p2E.filter(e=>e.date.startsWith(ym)).reduce((ss,e)=>ss+e.amount,0),0)/p2M.length:0;
+      const last2=parseFloat(sal2El.dataset.lastAuto||'0');
+      if((parseFloat(sal2El.value)||0)===0||Math.abs((parseFloat(sal2El.value)||0)-last2)<1){
+        sal2El.value=Math.round(p2Avg);sal2El.dataset.lastAuto=Math.round(p2Avg);
+      }
     }
   }
-  // Keep hidden salary in sync for any remaining references
   const salEl = document.getElementById('salary');
   if (salEl) salEl.value = (avgIncome > 0 ? avgIncome : income).toFixed(2);
-
-  // Avg-based rate and combined income for health score + mortgage
-  const avgRate = avgIncome > 0 ? (avgIncome - avgExp) / avgIncome * 100 : rate;
-  const combinedAvgInc = (avgIncome > 0 ? avgIncome : income) + partner2;
 
   // Saved tile dynamic border
   const savedTile = document.getElementById('ov-saved-tile');
@@ -2268,34 +2503,120 @@ function updateOverview() {
     if (savedIcon) savedIcon.textContent = sav >= 0 ? '📈' : '📉';
   }
 
+  const avgRate = avgIncome > 0 ? (avgIncome - avgExp) / avgIncome * 100 : rate;
+  const combinedAvgInc = (avgIncome > 0 ? avgIncome : income) + partner2;
+
   drawWealthBar(faTotal, sVal, equity);
   calcHealth(avgRate, combinedAvgInc, avgExp > 0 ? avgExp : totalExp, faTotal, sVal, mPrice, mDown);
   renderSavingsRateTrend();
   updateMonthComparison();
 }
 
-// ── OVERVIEW MONTH NAVIGATION ────────────────────────────────
+// ── OVERVIEW MONTH NAVIGATION ─────────────────────────────────
 let ovViewMonth = new Date().toISOString().slice(0,7);
 
 function ovChangeMonth(dir) {
   const [y, m] = ovViewMonth.split('-').map(Number);
   const d = new Date(y, m - 1 + dir, 1);
   ovViewMonth = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
-  updateOverview(); // updates tiles + calls updateMonthComparison at the end
+  updateOverview();
 }
+
+// ── SAVINGS RATE TREND ─────────────────────────────────────────
+function renderSavingsRateTrend() {
+  const el = document.getElementById('ov-savings-trend');
+  if (!el) return;
+  const thisYear = new Date().getFullYear().toString();
+  const allMonths = [...new Set(
+    expEntries.filter(e => e.date.startsWith(thisYear))
+              .map(e => e.date.slice(0, 7))
+  )].sort();
+
+  if (allMonths.length === 0) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text3);">No data yet — import transactions to see your savings rate over time.</div>';
+    return;
+  }
+
+  const points = allMonths.map(ym => {
+    const sal = getMonthSalaryForUser(ym, activeUser);
+    const exp = expEntries
+      .filter(e => e.type !== 'income' && e.date.startsWith(ym) && isOwnerVisible(e.owner || 'p1'))
+      .reduce((s,e) => s + e.amount * ownerMultiplier(e.owner||'p1'), 0);
+    const rate = sal > 0 ? Math.round((sal - exp) / sal * 100) : null;
+    return { ym, rate };
+  }).filter(p => p.rate !== null);
+
+  if (points.length === 0) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text3);">Add salary transactions (Income › Salary) to see your savings rate trend.</div>';
+    return;
+  }
+
+  const fmtMon = ym => new Date(ym+'-01').toLocaleDateString('en-GB',{month:'short'});
+  const avgRate = Math.round(points.reduce((s,p) => s + p.rate, 0) / points.length);
+  const maxAbs = Math.max(...points.map(p => Math.abs(p.rate)), 1);
+
+  const bars = points.map(p => {
+    const h = Math.max(4, Math.min(48, Math.abs(p.rate) / maxAbs * 48));
+    const col = p.rate >= 20 ? 'var(--positive)' : p.rate >= 0 ? 'var(--accent)' : 'var(--negative)';
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;" title="${fmtMon(p.ym)}: ${p.rate}%">
+      <span style="font-size:9px;font-weight:700;color:${col};">${p.rate}%</span>
+      <div style="width:100%;height:${h}px;background:${col};border-radius:3px 3px 0 0;opacity:.85;"></div>
+      <span style="font-size:8px;color:var(--text3);">${fmtMon(p.ym)}</span>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="display:flex;gap:3px;align-items:flex-end;height:72px;margin-bottom:8px;">${bars}</div>
+    <div style="font-size:11px;color:var(--text3);">Year avg: <strong style="color:${avgRate>=20?'var(--positive)':avgRate>=0?'var(--accent)':'var(--negative)'};">${avgRate}%</strong>${avgRate>=20?' 🎉':avgRate>=10?' — aim for 20%+':' — below target'}</div>`;
+}
+
+// ── DATE DROPDOWNS FOR QUICK-ADD ───────────────────────────────
+const MONTHS_EU = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function initExpDateDropdowns() {
+  const now   = new Date();
+  const dayEl = document.getElementById('exp-date-d');
+  const monEl = document.getElementById('exp-date-m');
+  const yrEl  = document.getElementById('exp-date-y');
+  if (!dayEl || !monEl || !yrEl) return;
+  dayEl.innerHTML = Array.from({length:31},(_,i)=>
+    `<option value="${String(i+1).padStart(2,'0')}">${String(i+1).padStart(2,'0')}</option>`
+  ).join('');
+  monEl.innerHTML = MONTHS_EU.map((name,i)=>
+    `<option value="${String(i+1).padStart(2,'0')}">${name}</option>`
+  ).join('');
+  const yr = now.getFullYear();
+  yrEl.innerHTML = [yr-2, yr-1, yr, yr+1].map(y=>
+    `<option value="${y}">${y}</option>`
+  ).join('');
+  dayEl.value = String(now.getDate()).padStart(2,'0');
+  monEl.value = String(now.getMonth()+1).padStart(2,'0');
+  yrEl.value  = String(now.getFullYear());
+  syncExpDate();
+}
+
+function syncExpDate() {
+  const d = document.getElementById('exp-date-d')?.value || '01';
+  const m = document.getElementById('exp-date-m')?.value || '01';
+  const y = document.getElementById('exp-date-y')?.value || new Date().getFullYear();
+  const hidden = document.getElementById('exp-date');
+  if (hidden) hidden.value = `${y}-${m}-${d}`;
+}
+
 
 function updateMonthComparison() {
   const thisMonth = ovViewMonth;
   const [y, m]    = thisMonth.split('-').map(Number);
   const lastDate  = new Date(y, m - 2, 1);
   const lastMonth = lastDate.getFullYear() + '-' + String(lastDate.getMonth()+1).padStart(2,'0');
-  const fmtShort  = ym => new Date(ym+'-01').toLocaleDateString('en-GB',{month:'short'});
-  const fmtLong   = ym => new Date(ym+'-01').toLocaleDateString('en-GB',{month:'long',year:'numeric'});
 
-  // Labels
-  const monthLabelEl = document.getElementById('ov-month-label');
-  if (monthLabelEl) monthLabelEl.textContent = fmtShort(thisMonth) + ' ' + y;
-  const curNameEl = document.getElementById('ov-cur-month-name');
+  const fmtShort = ym => new Date(ym+'-01').toLocaleDateString('en-GB',{month:'short'});
+  const fmtLong  = ym => new Date(ym+'-01').toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+
+  // Update labels
+  const monthLabel = document.getElementById('ov-month-label');
+  if (monthLabel) monthLabel.textContent = fmtShort(thisMonth) + ' ' + y;
+  const curNameEl  = document.getElementById('ov-cur-month-name');
   const prevNameEl = document.getElementById('ov-prev-month-name');
   if (curNameEl)  curNameEl.textContent  = fmtLong(thisMonth);
   if (prevNameEl) prevNameEl.textContent = fmtShort(lastMonth);
@@ -2310,7 +2631,6 @@ function updateMonthComparison() {
   }
   const selectedCat    = catFilterEl?.value || '__all__';
   const selectedSubcat = subcatFilterEl?.value || '__all__';
-
   if (subcatFilterEl) {
     if (selectedCat !== '__all__') {
       const subs = expSubcats(selectedCat);
@@ -2323,26 +2643,30 @@ function updateMonthComparison() {
     } else { subcatFilterEl.style.display = 'none'; }
   }
 
-  // Filter entries
   const filterEntry = e => {
     if (e.type === 'income') return false;
+    if (!isOwnerVisible(e.owner || 'p1')) return false;
     if (selectedCat !== '__all__' && e.cat !== selectedCat) return false;
     if (selectedSubcat !== '__all__' && e.subcat !== selectedSubcat) return false;
     return true;
   };
-  const allThisMonth = expEntries.filter(e => e.date.startsWith(thisMonth) && e.type !== 'income');
-  const allLastMonth = expEntries.filter(e => e.date.startsWith(lastMonth) && e.type !== 'income');
-  const thisEntries = expEntries.filter(e => e.date.startsWith(thisMonth) && filterEntry(e));
-  const lastEntries = expEntries.filter(e => e.date.startsWith(lastMonth) && filterEntry(e));
 
-  const thisTotal = thisEntries.reduce((s,e) => s+e.amount, 0);
-  const lastTotal = lastEntries.reduce((s,e) => s+e.amount, 0);
+  const allThisMonth = expEntries.filter(e => e.date.startsWith(thisMonth) && e.type !== 'income' && isOwnerVisible(e.owner||'p1'));
+  const allLastMonth = expEntries.filter(e => e.date.startsWith(lastMonth) && e.type !== 'income' && isOwnerVisible(e.owner||'p1'));
+  const thisEntries  = expEntries.filter(e => e.date.startsWith(thisMonth) && filterEntry(e));
+  const lastEntries  = expEntries.filter(e => e.date.startsWith(lastMonth) && filterEntry(e));
+
+  const thisTotal = thisEntries.reduce((s,e) => s + e.amount * ownerMultiplier(e.owner||'p1'), 0);
+  const lastTotal = lastEntries.reduce((s,e) => s + e.amount * ownerMultiplier(e.owner||'p1'), 0);
   const noData    = document.getElementById('ov-no-data');
 
-  // Update totals
-  const tmEl = document.getElementById('ov-this-month-total');
-  const lmEl = document.getElementById('ov-last-month-total');
+  const tmEl    = document.getElementById('ov-this-month-total');
+  const lmEl    = document.getElementById('ov-last-month-total');
   const deltaEl = document.getElementById('ov-total-delta');
+  const curNameEl2  = document.getElementById('ov-cur-month-name');
+  const prevNameEl2 = document.getElementById('ov-prev-month-name');
+  if (curNameEl2)  curNameEl2.textContent  = fmtLong(thisMonth);
+  if (prevNameEl2) prevNameEl2.textContent = fmtShort(lastMonth);
 
   if (thisTotal === 0 && lastTotal === 0) {
     if (noData) noData.style.display = 'block';
@@ -2363,15 +2687,14 @@ function updateMonthComparison() {
     deltaEl.style.color = delta > 0 ? 'var(--negative)' : delta < 0 ? 'var(--positive)' : 'var(--text3)';
   }
 
-  // ── Category rows ──────────────────────────────────────────
+  // Category rows
   const groupKey = e => selectedCat !== '__all__' && selectedSubcat === '__all__'
     ? (e.subcat || '(no subcategory)') : e.cat;
-
   const allKeys = [...new Set([...thisEntries.map(groupKey), ...lastEntries.map(groupKey)])].filter(Boolean);
   const rowData = allKeys.map(key => ({
     key,
-    cur:   thisEntries.filter(e=>groupKey(e)===key).reduce((s,e)=>s+e.amount,0),
-    prev:  lastEntries.filter(e=>groupKey(e)===key).reduce((s,e)=>s+e.amount,0),
+    cur:   thisEntries.filter(e=>groupKey(e)===key).reduce((s,e)=>s+e.amount*ownerMultiplier(e.owner||'p1'),0),
+    prev:  lastEntries.filter(e=>groupKey(e)===key).reduce((s,e)=>s+e.amount*ownerMultiplier(e.owner||'p1'),0),
     color: catColor(selectedCat !== '__all__' ? selectedCat : key)
   })).sort((a,b) => b.cur - a.cur);
 
@@ -2387,98 +2710,68 @@ function updateMonthComparison() {
       const diffCol = diff > 0 ? 'var(--negative)' : diff < 0 ? 'var(--positive)' : 'var(--text3)';
       const curW    = Math.round(d.cur  / maxVal * 100);
       const prevW   = Math.round(d.prev / maxVal * 100);
-      // Pill bar: two horizontal bars with explicit labels
       return `<div>
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px;">
           <span style="font-size:12px;font-weight:600;color:var(--text);">${d.key}</span>
-          <div style="display:flex;align-items:center;gap:8px;">
-            ${diff !== 0 ? `<span style="font-size:10px;font-weight:700;color:${diffCol};padding:1px 6px;background:${diff>0?'#fef2f2':'#f0fdf4'};border-radius:99px;">${diff>0?'↑':'↓'} ${fz(Math.abs(diff))}${diffPct!==null?' ('+diffPct+'%)':''}</span>` : ''}
-          </div>
+          ${diff !== 0 ? `<span style="font-size:10px;font-weight:700;color:${diffCol};padding:1px 6px;background:${diff>0?'#fef2f2':'#f0fdf4'};border-radius:99px;">${diff>0?'↑':'↓'} ${fz(Math.abs(diff))}${diffPct!==null?' ('+diffPct+'%)':''}</span>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;gap:3px;">
           <div style="display:flex;align-items:center;gap:7px;">
             <span style="font-size:9px;color:var(--text3);width:26px;text-align:right;flex-shrink:0;">${curMonLabel}</span>
             <div style="flex:1;background:var(--surface3);border-radius:99px;height:10px;overflow:hidden;">
-              <div style="width:${curW}%;height:100%;background:${d.color};border-radius:99px;transition:width .4s cubic-bezier(.4,0,.2,1);"></div>
+              <div style="width:${curW}%;height:100%;background:${d.color};border-radius:99px;transition:width .4s;"></div>
             </div>
-            <span style="font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--text);width:72px;text-align:right;flex-shrink:0;">${fz(d.cur)}</span>
+            <span style="font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--text);width:72px;text-align:right;">${fz(d.cur)}</span>
           </div>
           <div style="display:flex;align-items:center;gap:7px;">
             <span style="font-size:9px;color:var(--text3);width:26px;text-align:right;flex-shrink:0;">${prevMonLabel}</span>
             <div style="flex:1;background:var(--surface3);border-radius:99px;height:10px;overflow:hidden;">
-              <div style="width:${prevW}%;height:100%;background:${d.color};opacity:.28;border-radius:99px;transition:width .4s cubic-bezier(.4,0,.2,1);"></div>
+              <div style="width:${prevW}%;height:100%;background:${d.color};opacity:.28;border-radius:99px;transition:width .4s;"></div>
             </div>
-            <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);width:72px;text-align:right;flex-shrink:0;">${fz(d.prev)}</span>
+            <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);width:72px;text-align:right;">${fz(d.prev)}</span>
           </div>
         </div>
       </div>`;
     }).join('');
   }
 
-  // ── Insights ────────────────────────────────────────────────
+  // Insights
   const insEl = document.getElementById('ov-insights');
   if (!insEl) return;
-
-  const allThisTotal = allThisMonth.reduce((s,e)=>s+e.amount,0);
+  const allThisTotal = allThisMonth.reduce((s,e)=>s+e.amount*ownerMultiplier(e.owner||'p1'),0);
   const insights = [];
-
-  // 1. Biggest category this month
   const catTotals = {};
-  allThisMonth.forEach(e=>{ catTotals[e.cat]=(catTotals[e.cat]||0)+e.amount; });
+  allThisMonth.forEach(e=>{ catTotals[e.cat]=(catTotals[e.cat]||0)+e.amount*ownerMultiplier(e.owner||'p1'); });
   const topCat = Object.entries(catTotals).sort((a,b)=>b[1]-a[1])[0];
   if (topCat) {
     const pct = allThisTotal>0 ? (topCat[1]/allThisTotal*100).toFixed(0) : 0;
-    insights.push({ icon:'🏆', text:`<strong>${topCat[0]}</strong> is your biggest spend this month — ${fz(topCat[1])} (${pct}% of total)` });
+    insights.push({ icon:'🏆', text:`<strong>${topCat[0]}</strong> is your biggest spend — ${fz(topCat[1])} (${pct}% of total)` });
   }
-
-  // 2. Biggest single transaction this month
   const bigTxn = [...allThisMonth].sort((a,b)=>b.amount-a.amount)[0];
-  if (bigTxn) {
-    insights.push({ icon:'💳', text:`Largest single transaction: <strong>${bigTxn.desc}</strong> — ${fz(bigTxn.amount)}` + (bigTxn.cat ? ` (${bigTxn.cat})` : '') });
-  }
-
-  // 3. Biggest increase vs last month
+  if (bigTxn) insights.push({ icon:'💳', text:`Largest transaction: <strong>${bigTxn.desc}</strong> — ${fz(bigTxn.amount)}${bigTxn.cat?' ('+bigTxn.cat+')':''}` });
   if (lastTotal > 0) {
     const catTotalsLast = {};
-    allLastMonth.forEach(e=>{ catTotalsLast[e.cat]=(catTotalsLast[e.cat]||0)+e.amount; });
-    const increases = Object.keys({...catTotals,...catTotalsLast})
-      .map(k=>({ k, diff:(catTotals[k]||0)-(catTotalsLast[k]||0) }))
-      .filter(x=>x.diff>50).sort((a,b)=>b.diff-a.diff);
-    const biggest = increases[0];
-    if (biggest) insights.push({ icon:'📈', text:`<strong>${biggest.k}</strong> jumped by ${fz(biggest.diff)} vs last month`, bad:true });
-
-    // 4. Biggest saving
-    const savings = Object.keys({...catTotals,...catTotalsLast})
-      .map(k=>({ k, diff:(catTotals[k]||0)-(catTotalsLast[k]||0) }))
-      .filter(x=>x.diff<-50).sort((a,b)=>a.diff-b.diff);
-    const bestSaving = savings[0];
-    if (bestSaving) insights.push({ icon:'📉', text:`<strong>${bestSaving.k}</strong> down by ${fz(Math.abs(bestSaving.diff))} vs last month — good progress!`, good:true });
+    allLastMonth.forEach(e=>{ catTotalsLast[e.cat]=(catTotalsLast[e.cat]||0)+e.amount*ownerMultiplier(e.owner||'p1'); });
+    const increases = Object.keys({...catTotals,...catTotalsLast}).map(k=>({k,diff:(catTotals[k]||0)-(catTotalsLast[k]||0)})).filter(x=>x.diff>50).sort((a,b)=>b.diff-a.diff);
+    if (increases[0]) insights.push({ icon:'📈', text:`<strong>${increases[0].k}</strong> jumped by ${fz(increases[0].diff)} vs last month`, bad:true });
+    const savings = Object.keys({...catTotals,...catTotalsLast}).map(k=>({k,diff:(catTotals[k]||0)-(catTotalsLast[k]||0)})).filter(x=>x.diff<-50).sort((a,b)=>a.diff-b.diff);
+    if (savings[0]) insights.push({ icon:'📉', text:`<strong>${savings[0].k}</strong> down ${fz(Math.abs(savings[0].diff))} vs last month`, good:true });
   }
-
-  // 5. Most frequent merchant / description this month
   const descCount = {};
-  allThisMonth.forEach(e=>{ const k=e.desc; descCount[k]=(descCount[k]||{count:0,total:0}); descCount[k].count++; descCount[k].total+=e.amount; });
+  allThisMonth.forEach(e=>{ descCount[e.desc]=descCount[e.desc]||{count:0,total:0}; descCount[e.desc].count++; descCount[e.desc].total+=e.amount; });
   const topDesc = Object.entries(descCount).filter(([,v])=>v.count>=2).sort((a,b)=>b[1].total-a[1].total)[0];
-  if (topDesc) {
-    insights.push({ icon:'🔁', text:`Most recurring: <strong>${topDesc[0]}</strong> appeared ${topDesc[1].count}× totalling ${fz(topDesc[1].total)}` });
-  }
-
-  // 6. Daily average
+  if (topDesc) insights.push({ icon:'🔁', text:`Most recurring: <strong>${topDesc[0]}</strong> × ${topDesc[1].count}, total ${fz(topDesc[1].total)}` });
   const daysInMonth = new Date(y, m, 0).getDate();
-  const today = new Date();
-  const daysElapsed = thisMonth === today.toISOString().slice(0,7)
-    ? today.getDate() : daysInMonth;
-  const dailyAvg = daysElapsed > 0 ? allThisTotal / daysElapsed : 0;
-  if (allThisTotal > 0) {
-    insights.push({ icon:'📅', text:`Daily average: <strong>${fz(dailyAvg)}/day</strong> over ${daysElapsed} days` });
-  }
-
+  const today2 = new Date();
+  const daysElapsed = thisMonth === today2.toISOString().slice(0,7) ? today2.getDate() : daysInMonth;
+  if (allThisTotal > 0) insights.push({ icon:'📅', text:`Daily average: <strong>${fz(allThisTotal/daysElapsed)}/day</strong> over ${daysElapsed} days` });
   insEl.innerHTML = insights.map(ins => `
     <div style="display:flex;gap:9px;align-items:flex-start;padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:7px;${ins.bad?'border-left:3px solid var(--negative);':ins.good?'border-left:3px solid var(--positive);':''}">
       <span style="font-size:14px;flex-shrink:0;line-height:1.4;">${ins.icon}</span>
       <span style="font-size:12px;color:var(--text2);line-height:1.5;">${ins.text}</span>
     </div>`).join('');
 }
+
 
 function drawWealthBar(fixed, stocks, equity) {
   const cv = document.getElementById('ov-wbar');
@@ -2686,18 +2979,9 @@ function addMilestone(goalId) {
   if (goal) { goal.milestones.push({text:'New milestone',done:false}); renderGoals(); saveAppState(); }
 }
 
-function updateGoalField(id, field, val, rerenderNow=false) {
+function updateGoalField(id, field, val) {
   const goal = goals.find(g=>g.id===id);
-  if (!goal) return;
-  goal[field] = (field==='target'||field==='saved'||field==='monthly') ? (parseFloat(val)||0) : val;
-  saveAppState();
-  // Only re-render immediately for non-text fields (selects, checkboxes).
-  // For number/text inputs, re-render is triggered on blur to preserve focus.
-  if (rerenderNow) renderGoals();
-}
-
-function updateGoalFieldBlur(id, field, val) {
-  updateGoalField(id, field, val, true);
+  if (goal) { goal[field] = field==='target'||field==='saved'||field==='monthly' ? (parseFloat(val)||0) : val; renderGoals(); saveAppState(); }
 }
 
 function renderGoals() {
@@ -2723,21 +3007,13 @@ function renderGoals() {
         <span class="goal-tag" style="background:${tagBg};color:${tagTxt};">${goal.tag}</span>
         <button class="btn-icon" style="margin-left:auto;" onclick="removeGoal(${goal.id})">×</button>
       </div>
-      <input class="goal-name-input" value="${goal.name}"
-        oninput="updateGoalField(${goal.id},'name',this.value)"
-        onblur="updateGoalFieldBlur(${goal.id},'name',this.value)">
+      <input class="goal-name-input" value="${goal.name}" oninput="updateGoalField(${goal.id},'name',this.value)">
       <div class="goal-fields">
-        <div class="goal-field"><label>Target (zł)</label><input type="number" value="${goal.target}"
-          oninput="updateGoalField(${goal.id},'target',this.value)"
-          onblur="updateGoalFieldBlur(${goal.id},'target',this.value)"></div>
-        <div class="goal-field"><label>Saved (zł)</label><input type="number" value="${goal.saved}"
-          oninput="updateGoalField(${goal.id},'saved',this.value)"
-          onblur="updateGoalFieldBlur(${goal.id},'saved',this.value)"></div>
-        <div class="goal-field"><label>Monthly (zł)</label><input type="number" value="${goal.monthly}" placeholder="auto"
-          oninput="updateGoalField(${goal.id},'monthly',this.value)"
-          onblur="updateGoalFieldBlur(${goal.id},'monthly',this.value)"></div>
+        <div class="goal-field"><label>Target (zł)</label><input type="number" value="${goal.target}" oninput="updateGoalField(${goal.id},'target',this.value)"></div>
+        <div class="goal-field"><label>Saved (zł)</label><input type="number" value="${goal.saved}" oninput="updateGoalField(${goal.id},'saved',this.value)"></div>
+        <div class="goal-field"><label>Monthly (zł)</label><input type="number" value="${goal.monthly}" placeholder="auto" oninput="updateGoalField(${goal.id},'monthly',this.value)"></div>
         <div class="goal-field"><label>Category</label>
-          <select onchange="updateGoalField(${goal.id},'tag',this.value,true)" style="font-size:11px;padding:5px 7px;">
+          <select onchange="updateGoalField(${goal.id},'tag',this.value)" style="font-size:11px;padding:5px 7px;">
             ${['Safety','Property','Investing','Lifestyle','Other'].map(t=>`<option ${goal.tag===t?'selected':''}>${t}</option>`).join('')}
           </select>
         </div>
@@ -2798,7 +3074,8 @@ function saveAppState() {
         name: inputs[0]?.value || '',
         balance: inputs[1]?.value || '0',
         rate: inputs[2]?.value || '0',
-        curr: r.querySelector('.curr-badge')?.textContent || 'PLN'
+        curr: r.querySelector('.curr-badge')?.textContent || 'PLN',
+        owner: r.getAttribute('data-owner') || 'p1'
       });
     });
 
@@ -2811,17 +3088,14 @@ function saveAppState() {
         shares: inputs[0]?.value || '0',
         avgBuy: inputs[1]?.value || '0',
         current: tr.querySelector('.price-cell input')?.value || '0',
-        curr: tr.querySelector('.curr-badge')?.textContent || 'USD'
+        curr: tr.querySelector('.curr-badge')?.textContent || 'USD',
+        owner: tr.getAttribute('data-owner') || 'p1'
       });
     });
 
     // Collect mortgage inputs
     const mortgage = {
       price: document.getElementById('m-price')?.value || '',
-      salary1: document.getElementById('m-salary1')?.value || '',
-      salary1Curr: document.getElementById('m-salary1-curr')?.value || 'PLN',
-      salary2: document.getElementById('m-salary2')?.value || '',
-      salary2Curr: document.getElementById('m-salary2-curr')?.value || 'PLN',
       priceCurr: document.getElementById('m-price-curr')?.value || 'PLN',
       down: document.getElementById('m-down')?.value || '',
       downCurr: document.getElementById('m-down-curr')?.value || 'PLN',
@@ -2892,12 +3166,12 @@ function restoreAppState() {
 
     // Fixed accounts
     if (state.fixedAccounts?.length) {
-      state.fixedAccounts.forEach(a => addFixedAcc(a.name, parseFloat(a.balance) || 0, parseFloat(a.rate) || 0, a.curr));
+      state.fixedAccounts.forEach(a => addFixedAcc(a.name, parseFloat(a.balance) || 0, parseFloat(a.rate) || 0, a.curr, a.owner || 'p1'));
     }
 
     // Stocks
     if (state.stocks?.length) {
-      state.stocks.forEach(s => addStockRow(s.ticker, parseFloat(s.shares) || 0, parseFloat(s.avgBuy) || 0, parseFloat(s.current) || 0, s.curr));
+      state.stocks.forEach(s => addStockRow(s.ticker, parseFloat(s.shares) || 0, parseFloat(s.avgBuy) || 0, parseFloat(s.current) || 0, s.curr, s.owner || 'p1'));
     }
 
     // Mortgage
@@ -2912,8 +3186,6 @@ function restoreAppState() {
       if (m.ins)       { document.getElementById('m-ins').value       = m.ins;       document.getElementById('m-ins-curr').value   = m.insCurr; }
       if (m.maint)     { document.getElementById('m-maint').value     = m.maint;     document.getElementById('m-maint-curr').value = m.maintCurr; }
       if (m.purchased)   document.getElementById('m-purchased').checked = m.purchased;
-      if (m.salary1)     { const el=document.getElementById('m-salary1'); if(el){el.value=m.salary1;el.dataset.lastAuto=m.salary1;} document.getElementById('m-salary1-curr').value = m.salary1Curr || 'PLN'; }
-      if (m.salary2)     { document.getElementById('m-salary2').value = m.salary2; document.getElementById('m-salary2-curr').value = m.salary2Curr || 'PLN'; }
       if (m.overpayMonthly) document.getElementById('m-overpay-monthly').value = m.overpayMonthly;
       if (m.overpayLump)    document.getElementById('m-overpay-lump').value    = m.overpayLump;
       if (m.overpayFreq)    document.getElementById('m-overpay-freq').value    = m.overpayFreq;
@@ -2958,7 +3230,6 @@ window.addEventListener('DOMContentLoaded', () => {
   initExpenseTracker();
   initAutoSave();
   recalcAll();
-  initAllPrefixes();
   renderGoals();
   updateAvCounter();
   // Fetch NBP rates on load — but do NOT auto-refresh stock prices
@@ -2967,60 +3238,6 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── NBP LIVE RATES ────────────────────────────────
-
-function renderSavingsRateTrend() {
-  const el = document.getElementById('ov-savings-trend');
-  if (!el) return;
-
-  // Compute savings rate per month for the current year from transactions
-  const thisYear = new Date().getFullYear().toString();
-  const allMonths = [...new Set(
-    expEntries.filter(e => e.date.startsWith(thisYear))
-              .map(e => e.date.slice(0, 7))
-  )].sort();
-
-  if (allMonths.length === 0) {
-    el.innerHTML = '<div style="font-size:11px;color:var(--text3);">No data yet — import transactions to see your savings rate over time.</div>';
-    return;
-  }
-
-  const points = allMonths.map(ym => {
-    const sal = getMonthSalary(ym);
-    const exp = expEntries.filter(e => e.type !== 'income' && e.date.startsWith(ym))
-                          .reduce((s,e) => s + e.amount, 0);
-    const rate = sal > 0 ? Math.round((sal - exp) / sal * 100) : null;
-    return { ym, sal, exp, rate };
-  }).filter(p => p.rate !== null);
-
-  if (points.length === 0) {
-    el.innerHTML = '<div style="font-size:11px;color:var(--text3);">Add salary transactions (Income › Salary) to see your savings rate trend.</div>';
-    return;
-  }
-
-  const fmtMon = ym => new Date(ym+'-01').toLocaleDateString('en-GB',{month:'short'});
-  const avgRate = Math.round(points.reduce((s,p) => s + p.rate, 0) / points.length);
-
-  const bars = points.map(p => {
-    const isPos = p.rate >= 0;
-    const h = Math.min(50, Math.abs(p.rate) * 1.5);
-    const col = p.rate >= 20 ? 'var(--positive)' : p.rate >= 0 ? 'var(--accent)' : 'var(--negative)';
-    return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;" title="${fmtMon(p.ym)}: ${p.rate}% saved">
-      <span style="font-size:9px;font-weight:700;color:${col};">${p.rate}%</span>
-      <div style="width:100%;height:${h}px;background:${col};border-radius:3px 3px 0 0;opacity:.85;"></div>
-      <span style="font-size:8px;color:var(--text3);">${fmtMon(p.ym)}</span>
-    </div>`;
-  }).join('');
-
-  el.innerHTML = `
-    <div style="display:flex;gap:3px;align-items:flex-end;height:80px;margin-bottom:8px;">${bars}</div>
-    <div style="font-size:11px;color:var(--text3);">Avg savings rate this year: <strong style="color:${avgRate>=20?'var(--positive)':avgRate>=0?'var(--accent)':'var(--negative)'};">${avgRate}%</strong>
-    ${avgRate >= 20 ? ' 🎉' : avgRate >= 10 ? ' — aim for 20%+' : ' — below target'}</div>`;
-}
-
-function toggleHealthInfo() {
-  const el = document.getElementById('health-info');
-  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
 
 async function fetchNBPRates() {
   const tsEl = document.getElementById('nbp-ts');
@@ -3460,10 +3677,8 @@ const CATS_STORAGE_KEY   = 'fc_categories_v1';
 const EXP_COLORS = ['#1d4ed8','#059669','#d97706','#dc2626','#7c3aed','#0891b2','#db2777','#65a30d','#ea580c','#0284c7','#9333ea','#16a34a'];
 
 let expEntries  = [];
-let expViewMode = 'expenses'; // 'expenses' | 'income' | 'all'
+let expViewMode = 'expenses'; // 'expenses' | 'income'
 let expViewMonth = '';
-let expCatFilter = null;
-let expCurrFilter = null; // null = all currencies
 
 // ── CATEGORY SYSTEM ───────────────────────────────
 
@@ -3594,79 +3809,19 @@ function saveExpenses() {
 
 function setExpView(mode) {
   expViewMode = mode;
-  expCatFilter = null;
-  expCurrFilter = null;
   document.getElementById('exp-view-expenses')?.classList.toggle('btn-ghost', mode !== 'expenses');
   document.getElementById('exp-view-income')?.classList.toggle('btn-ghost', mode !== 'income');
-  document.getElementById('exp-view-all')?.classList.toggle('btn-ghost', mode !== 'all');
-  document.getElementById('exp-view-eur')?.classList.add('btn-ghost');
   renderExpenses();
-}
-
-function setExpCurrFilter(curr) {
-  if (expCurrFilter === curr) {
-    expCurrFilter = null;
-    document.getElementById('exp-view-eur')?.classList.add('btn-ghost');
-  } else {
-    expCurrFilter = curr;
-    document.getElementById('exp-view-eur')?.classList.remove('btn-ghost');
-  }
-  renderExpenses();
-}
-
-function filterByCat(cat) {
-  expCurrFilter = null;
-  document.getElementById('exp-view-eur')?.classList.add('btn-ghost');
-  expCatFilter = (expCatFilter === cat) ? null : cat;
-  const badge = document.getElementById('exp-cat-filter-badge');
-  if (badge) {
-    badge.style.display = expCatFilter ? '' : 'none';
-    badge.textContent = '× ' + (expCatFilter || '');
-  }
-  renderExpenses();
-}
-
-function clearCatFilter() {
-  expCatFilter = null;
-  const badge = document.getElementById('exp-cat-filter-badge');
-  if (badge) badge.style.display = 'none';
-  renderExpenses();
-}
-
-function suggestCatFromHistory(desc) {
-  const hintEl = document.getElementById('exp-hist-hint');
-  if (!hintEl) return;
-  if (!desc || desc.length < 3) { hintEl.style.display = 'none'; return; }
-  const histMap = buildCatHistoryMap();
-  const key = desc.trim().toLowerCase();
-  const options = histMap[key];
-  if (!options || !options.length) { hintEl.style.display = 'none'; return; }
-  const uniqueCats = [...new Set(options.map(o => o.cat))];
-  const best = options[0];
-  if (uniqueCats.length === 1) {
-    // Auto-fill the category
-    const catSel = document.getElementById('exp-cat');
-    if (catSel) { catSel.value = best.cat; updateSubcatSelect(); }
-    const subSel = document.getElementById('exp-subcat');
-    if (subSel && best.subcat) subSel.value = best.subcat;
-    hintEl.textContent = `📋 Auto-filled from history: ${best.cat}${best.subcat?' › '+best.subcat:''}`;
-    hintEl.style.display = 'block';
-  } else {
-    hintEl.textContent = `📋 Seen in multiple categories — check selection`;
-    hintEl.style.display = 'block';
-  }
 }
 
 function addExpenseEntry() {
   const desc   = document.getElementById('exp-desc')?.value?.trim() || '—';
   const amount = parseFloat(document.getElementById('exp-amount')?.value) || 0;
-  const curr   = document.getElementById('exp-curr')?.value || 'PLN';
   const cat    = document.getElementById('exp-cat')?.value || 'Other';
   const subcat = document.getElementById('exp-subcat')?.value || '';
   const date   = document.getElementById('exp-date')?.value || new Date().toISOString().slice(0,10);
-  const type   = document.getElementById('exp-type')?.value || 'expense';
   if (amount <= 0) { document.getElementById('exp-amount')?.focus(); return; }
-  expEntries.push({ id: Date.now(), date, desc, amount, cat, subcat, type, curr });
+  expEntries.push({ id: Date.now(), date, desc, amount, cat, subcat, type: 'expense' });
   saveExpenses();
   document.getElementById('exp-desc').value = '';
   document.getElementById('exp-amount').value = '';
@@ -3689,23 +3844,8 @@ function handleExpenseCSV(inputEl, droppedFile) {
       const rows  = parseCSV(text);
       if (rows.length === 0) { alert('No transactions found in file.'); return; }
       csvPendingRows = rows;
-      // Apply history-based suggestions first (fast, client-side)
-      const histResult = applyHistorySuggestions(rows);
       openCSVReviewModal();
-      // Show history result in status before AI runs
-      const statusEl = document.getElementById('csv-ai-status');
-      if (histResult.autoApplied > 0 || histResult.conflicts > 0) {
-        let msg = '';
-        if (histResult.autoApplied > 0) msg += `<span style="color:var(--positive);">✓ ${histResult.autoApplied} auto-categorised from history</span>`;
-        if (histResult.conflicts > 0)   msg += `${msg?' · ':''}<span style="color:var(--orange);">⚠ ${histResult.conflicts} have conflicting history — please review</span>`;
-        if (statusEl) statusEl.innerHTML = msg;
-      }
-      // Then run AI for remaining uncategorised rows
-      const needsAI = rows.filter(r => !r.histSuggested && r.type === 'expense');
-      if (needsAI.length > 0) suggestCategoriesAI(rows);
-      else if (statusEl && histResult.autoApplied > 0) {
-        statusEl.innerHTML += ' · <span style="color:var(--text3);">No AI needed — all matched from history</span>';
-      }
+      suggestCategoriesAI(rows);
     } catch(err) {
       alert('Error reading CSV: ' + err.message);
     }
@@ -3734,17 +3874,15 @@ function parseCSV(text) {
     h.toLowerCase().replace(/^#/, '').replace(/"/g, '').trim()
   );
 
-  // Map columns — support all three banks + Revolut Spanish
+  // Map columns — support all three banks
   const dateIdx = headers.findIndex(h =>
-    h === 'data' || h === 'data operacji' || h === 'started date' || h === 'completed date' ||
-    h === 'fecha de inicio' || h === 'fecha' || h.includes('date') || h.includes('fecha'));
+    h === 'data' || h === 'data operacji' || h === 'started date' || h === 'completed date' || h.includes('date'));
   const descIdx = headers.findIndex(h =>
     h.includes('opis') || h.includes('opis operacji') || h.includes('tytuł') || h.includes('tytul') ||
-    h.includes('description') || h.includes('descripción') || h.includes('descripcion') ||
-    h.includes('nadawca') || h.includes('title'));
+    h.includes('description') || h.includes('nadawca') || h.includes('title'));
   const amtIdx  = headers.findIndex(h =>
-    h === 'kwota' || h === 'amount' || h === 'importe' || h.includes('kwota') || h.includes('amount') || h.includes('importe'));
-  const currIdx = headers.findIndex(h => h === 'currency' || h === 'divisa');
+    h === 'kwota' || h === 'amount' || h.includes('kwota') || h.includes('amount'));
+  const currIdx = headers.findIndex(h => h === 'currency');
 
   if (dateIdx < 0 || amtIdx < 0) {
     alert(`Could not detect required columns.\nDetected headers: ${headers.join(', ')}\n\nExpected date and amount columns.`);
@@ -3781,6 +3919,7 @@ function parseCSV(text) {
       cat: type === 'income' ? 'Income' : '',
       subcat: '',
       aiSuggested: false,
+      owner: coupleMode ? (activeUser === 'together' ? 'shared' : activeUser) : 'p1',
     });
   }
   return results;
@@ -3803,11 +3942,8 @@ function parseFlexDate(s) {
   // YYYY-MM-DD or YYYY-MM-DD HH:MM:SS
   let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (m) return `${m[1]}-${m[2]}-${m[3]}`;
-  // M/D/YYYY HH:MM or M/D/YYYY (Revolut Spanish format)
-  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (m) return `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
-  // DD.MM.YYYY or DD-MM-YYYY
-  m = s.match(/^(\d{1,2})[.\-](\d{1,2})[.\-](\d{4})/);
+  // DD.MM.YYYY or DD-MM-YYYY or DD/MM/YYYY
+  m = s.match(/^(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})/);
   if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
   return '';
 }
@@ -3845,33 +3981,16 @@ function renderCSVReviewTable() {
     const catOpts  = cats.map(c => `<option value="${c}" ${row.cat===c?'selected':''}>${c}</option>`).join('');
     const subcats  = expSubcats(row.cat);
     const subOpts  = `<option value="">— none —</option>` + subcats.map(s => `<option value="${s}" ${row.subcat===s?'selected':''}>${s}</option>`).join('');
-    // Badge: history auto / conflict / AI
-    let badge = '';
-    if (row.histSuggested && !row.histConflict) {
-      badge = `<span class="hist-badge" title="Matched from your transaction history">📋 History</span>`;
-    } else if (row.histSuggested && row.histConflict) {
-      badge = `<span class="conflict-badge" title="This description was categorised differently before — please confirm">⚠ Conflict</span>`;
-    } else if (row.aiSuggested) {
-      badge = `<span class="ai-badge">✦ AI</span>`;
-    }
-    // For conflict rows, build a quick-pick from past options
-    const conflictPick = (row.histConflict && row.histOptions?.length > 1) ?
-      `<div style="margin-top:3px;display:flex;gap:3px;flex-wrap:wrap;">${
-        row.histOptions.map(o =>
-          `<button onclick="onCSVCatChange(${i},'${o.cat}');csvPendingRows[${i}].subcat='${o.subcat}';document.getElementById('csv-subcat-${i}').value='${o.subcat}';renderCSVReviewTable()" 
-           style="font-size:9px;padding:1px 6px;border-radius:3px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;color:var(--text2);" 
-           title="${o.cat}${o.subcat?' › '+o.subcat:''} (${o.count}x)">${o.cat}${o.subcat?' › '+o.subcat:''}</button>`
-        ).join('')
-      }</div>` : '';
+    const aiB      = row.aiSuggested ? `<span class="ai-badge">✦ AI</span>` : '';
     return `<tr class="${isIncome?'income-row':''}" id="csv-row-${i}">
       <td><input type="checkbox" class="row-toggle csv-row-check" data-idx="${i}" onchange="onCSVRowCheck()"
         checked></td>
-      <td style="font-family:'DM Mono',monospace;font-size:11px;white-space:nowrap;">${row.date.slice(8)}/${row.date.slice(5,7)}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;white-space:nowrap;">${row.date.slice(5)}</td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${row.desc}">${row.desc}</td>
       <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:600;color:${isIncome?'var(--positive)':'var(--negative)'};">
         ${isIncome?'+':'-'}${row.amount.toFixed(2)} ${row.curr}</td>
       <td><span class="type-badge ${isIncome?'type-income':'type-expense'}">${isIncome?'Income':'Expense'}</span></td>
-      <td>${badge}<select onchange="onCSVCatChange(${i},this.value)" style="min-width:120px;">${catOpts}</select>${conflictPick}</td>
+      <td>${aiB}<select onchange="onCSVCatChange(${i},this.value)" style="min-width:120px;">${catOpts}</select></td>
       <td><select id="csv-subcat-${i}" onchange="csvPendingRows[${i}].subcat=this.value" style="min-width:120px;">${subOpts}</select></td>
     </tr>`;
   }).join('');
@@ -4011,73 +4130,6 @@ function confirmCSVImport(importAll = true) {
   alert(`✓ Imported ${added} transaction(s) — ${expenses.length} expenses and ${income.length} income entries.`);
 }
 
-// ── HISTORY-BASED AUTO-CATEGORISATION ────────────────────────
-// Builds a map: description → [{cat, subcat, count}] from past transactions
-function buildCatHistoryMap() {
-  const map = {}; // desc → { cat → { subcat → count } }
-  expEntries.forEach(e => {
-    if (!e.desc || e.type === 'income') return;
-    const key = e.desc.trim().toLowerCase();
-    if (!map[key]) map[key] = {};
-    const catKey = e.cat || '';
-    if (!map[key][catKey]) map[key][catKey] = {};
-    const subKey = e.subcat || '';
-    map[key][catKey][subKey] = (map[key][catKey][subKey] || 0) + 1;
-  });
-  // Convert to: desc → [{cat, subcat, count, total}], sorted by count desc
-  const result = {};
-  Object.entries(map).forEach(([desc, cats]) => {
-    const options = [];
-    Object.entries(cats).forEach(([cat, subcats]) => {
-      Object.entries(subcats).forEach(([subcat, count]) => {
-        options.push({ cat, subcat, count });
-      });
-    });
-    options.sort((a,b) => b.count - a.count);
-    result[desc] = options;
-  });
-  return result;
-}
-
-function applyHistorySuggestions(rows) {
-  const histMap = buildCatHistoryMap();
-  const cats = expCats();
-  let autoApplied = 0, conflicts = 0;
-
-  rows.forEach(row => {
-    if (row.type === 'income' || row.aiSuggested || row.histSuggested) return;
-    const key = row.desc.trim().toLowerCase();
-    const options = histMap[key];
-    if (!options || !options.length) return;
-
-    const uniqueCats = [...new Set(options.map(o => o.cat))].filter(c => cats.includes(c));
-
-    if (uniqueCats.length === 1) {
-      // Always the same category — auto-apply the most common cat+subcat
-      const best = options.find(o => cats.includes(o.cat));
-      if (best) {
-        row.cat = best.cat;
-        row.subcat = best.subcat || '';
-        row.histSuggested = true;
-        row.histConflict = false;
-        autoApplied++;
-      }
-    } else if (uniqueCats.length > 1) {
-      // Multiple categories seen for this description — flag as conflict, pre-fill most common
-      const best = options.find(o => cats.includes(o.cat));
-      if (best) {
-        row.cat = best.cat;
-        row.subcat = best.subcat || '';
-        row.histSuggested = true;
-        row.histConflict = true;
-        row.histOptions = options.filter(o => cats.includes(o.cat)).slice(0, 5);
-        conflicts++;
-      }
-    }
-  });
-  return { autoApplied, conflicts };
-}
-
 async function suggestCategoriesAI(rows) {
   const statusEl = document.getElementById('csv-ai-status');
   const cats = expCats();
@@ -4144,46 +4196,6 @@ Use exact category names from the list. If no good subcategory exists use "".`;
   }
 }
 
-const MONTHS_EU = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
-function initExpDateDropdowns() {
-  const now   = new Date();
-  const dayEl = document.getElementById('exp-date-d');
-  const monEl = document.getElementById('exp-date-m');
-  const yrEl  = document.getElementById('exp-date-y');
-  if (!dayEl || !monEl || !yrEl) return;
-
-  // Days 1-31
-  dayEl.innerHTML = Array.from({length:31},(_,i)=>
-    `<option value="${String(i+1).padStart(2,'0')}">${String(i+1).padStart(2,'0')}</option>`
-  ).join('');
-
-  // Months
-  monEl.innerHTML = MONTHS_EU.map((name,i)=>
-    `<option value="${String(i+1).padStart(2,'0')}">${name}</option>`
-  ).join('');
-
-  // Years: current year -2 to +1
-  const yr = now.getFullYear();
-  yrEl.innerHTML = [yr-2, yr-1, yr, yr+1].map(y=>
-    `<option value="${y}">${y}</option>`
-  ).join('');
-
-  // Set to today
-  dayEl.value = String(now.getDate()).padStart(2,'0');
-  monEl.value = String(now.getMonth()+1).padStart(2,'0');
-  yrEl.value  = String(now.getFullYear());
-  syncExpDate();
-}
-
-function syncExpDate() {
-  const d = document.getElementById('exp-date-d')?.value || '01';
-  const m = document.getElementById('exp-date-m')?.value || '01';
-  const y = document.getElementById('exp-date-y')?.value || new Date().getFullYear();
-  const hidden = document.getElementById('exp-date');
-  if (hidden) hidden.value = `${y}-${m}-${d}`;
-}
-
 function initExpenseTracker() {
   loadCats();
   try {
@@ -4228,23 +4240,6 @@ function updateBackupReminder() {
   }
 }
 
-function updateExpEntry(id, field, value, catSelectEl) {
-  const entry = expEntries.find(e => e.id === id);
-  if (!entry) return;
-  entry[field] = value;
-  if (field === 'cat') {
-    entry.subcat = '';
-    // update subcat dropdown for this row
-    const subSel = document.getElementById('subcat-row-' + id);
-    if (subSel) {
-      const subs = expSubcats(value);
-      subSel.innerHTML = '<option value="">— none —</option>' + subs.map(s => '<option value="'+s+'">'+s+'</option>').join('');
-    }
-  }
-  saveExpenses();
-  renderCatBreakdown(expEntries.filter(e => e.date.startsWith(expViewMonth) && e.type !== 'income'), expCats());
-}
-
 function deleteExpense(id) {
   expEntries = expEntries.filter(e => e.id !== id);
   saveExpenses();
@@ -4266,29 +4261,53 @@ function monthLabel(ym) {
 
 function renderExpenses() {
   populateExpCatSelect();
-  // Also refresh the overview month comparison whenever expenses change
   if (typeof updateMonthComparison === 'function') updateMonthComparison();
 
   const lbl = document.getElementById('exp-month-label');
   if (lbl) lbl.textContent = monthLabel(expViewMonth);
   const bdLbl = document.getElementById('exp-breakdown-month');
   if (bdLbl) bdLbl.textContent = monthLabel(expViewMonth);
-  const avbLbl = document.getElementById('exp-avb-month');
-  if (avbLbl) avbLbl.textContent = monthLabel(expViewMonth);
 
-  // Filter entries for current view month — separate income from expenses
-  const monthAll      = expEntries.filter(e => e.date.startsWith(expViewMonth)).sort((a,b) => b.date.localeCompare(a.date));
+  // All entries for this month — owner-filtered for tiles AND log
+  const monthAllRaw = expEntries.filter(e => e.date.startsWith(expViewMonth)).sort((a,b) => b.date.localeCompare(a.date));
+  const monthAll = coupleMode ? monthAllRaw.filter(e => isOwnerVisible(e.owner || 'p1')) : monthAllRaw;
   const monthExpenses = monthAll.filter(e => e.type !== 'income');
   const monthIncome   = monthAll.filter(e => e.type === 'income');
 
-  const totalExpenses = monthExpenses.reduce((s,e) => s+e.amount, 0);
-  const totalIncome   = monthIncome.reduce((s,e) => s+e.amount, 0);
+  const totalExpenses = monthExpenses.reduce((s,e) => s + e.amount * ownerMultiplier(e.owner||'p1'), 0);
+  const totalIncome   = monthIncome.reduce((s,e)   => s + e.amount * ownerMultiplier(e.owner||'p1'), 0);
   const netFlow       = totalIncome - totalExpenses;
 
+  // Summary tiles
+  const prevMonth = (() => {
+    const [y,m] = expViewMonth.split('-').map(Number);
+    const d = new Date(y,m-2,1);
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  })();
+  const prevExpRaw = expEntries.filter(e=>e.date.startsWith(prevMonth)&&e.type!=='income'&&isOwnerVisible(e.owner||'p1'));
+  const prevExpenses = prevExpRaw.reduce((s,e)=>s+e.amount*ownerMultiplier(e.owner||'p1'),0);
+  const diff = totalExpenses - prevExpenses;
+
+  const tilesEl = document.getElementById('exp-summary-tiles');
+  if (tilesEl) tilesEl.innerHTML = `
+    <div class="stat-tile"><div class="label">Expenses</div><div class="value negative">${fz(totalExpenses)}</div><div class="sub">${monthExpenses.length} transaction${monthExpenses.length!==1?'s':''}</div></div>
+    <div class="stat-tile"><div class="label">Income</div><div class="value positive">${fz(totalIncome)}</div><div class="sub">${monthIncome.length} transaction${monthIncome.length!==1?'s':''}</div></div>
+    <div class="stat-tile"><div class="label">Net Flow</div><div class="value ${netFlow>=0?'positive':'negative'}">${netFlow>=0?'+':''}${fz(netFlow)}</div><div class="sub">income minus expenses</div></div>
+    <div class="stat-tile"><div class="label">vs Last Month</div><div class="value ${diff<=0?'positive':'negative'}">${diff===0?'—':(diff>0?'+':'')+fz(diff)}</div><div class="sub">expenses change</div></div>`;
+
+  const log   = document.getElementById('exp-log');
+  const empty = document.getElementById('exp-empty');
+  if (!log) return;
+
+  // Apply owner filter (couple mode)
+  let monthAllFiltered = coupleMode
+    ? monthAll.filter(e => isOwnerVisible(e.owner || 'p1'))
+    : monthAll;
+
   // Apply view mode filter
-  let viewEntries = monthAll;
-  if (expViewMode === 'expenses') viewEntries = monthAll.filter(e => e.type !== 'income');
-  else if (expViewMode === 'income') viewEntries = monthAll.filter(e => e.type === 'income');
+  let viewEntries = monthAllFiltered;
+  if (expViewMode === 'expenses') viewEntries = monthAllFiltered.filter(e => e.type !== 'income');
+  else if (expViewMode === 'income') viewEntries = monthAllFiltered.filter(e => e.type === 'income');
   // Apply category filter
   if (expCatFilter) viewEntries = viewEntries.filter(e => e.cat === expCatFilter);
   // Apply currency filter
@@ -4308,6 +4327,7 @@ function renderExpenses() {
     if (expCatFilter) badge.textContent = '× ' + expCatFilter;
   }
 
+  // Month total label
   const totEl = document.getElementById('exp-month-total');
   if (totEl) {
     if (viewEntries.length > 0) {
@@ -4326,45 +4346,26 @@ function renderExpenses() {
     } else { totEl.textContent = ''; totEl.style.color = 'var(--accent)'; }
   }
 
-  // Summary tiles — proper income vs expense split
-  const allMonths = [...new Set(expEntries.map(e=>e.date.slice(0,7)))].sort();
-  const prevMonth = (() => {
-    const [y,m] = expViewMonth.split('-').map(Number);
-    const d = new Date(y,m-2,1);
-    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-  })();
-  const prevExpenses = expEntries.filter(e=>e.date.startsWith(prevMonth)&&e.type!=='income').reduce((s,e)=>s+e.amount,0);
-  const diff = totalExpenses - prevExpenses;
-
-  const tilesEl = document.getElementById('exp-summary-tiles');
-  if (tilesEl) tilesEl.innerHTML = `
-    <div class="stat-tile"><div class="label">Expenses</div><div class="value negative">${fz(totalExpenses)}</div><div class="sub">${monthExpenses.length} transaction${monthExpenses.length!==1?'s':''}</div></div>
-    <div class="stat-tile"><div class="label">Income</div><div class="value positive">${fz(totalIncome)}</div><div class="sub">${monthIncome.length} transaction${monthIncome.length!==1?'s':''}</div></div>
-    <div class="stat-tile"><div class="label">Net Flow</div><div class="value ${netFlow>=0?'positive':'negative'}">${netFlow>=0?'+':''}${fz(netFlow)}</div><div class="sub">income minus expenses</div></div>
-    <div class="stat-tile"><div class="label">vs Last Month</div><div class="value ${diff<=0?'positive':'negative'}">${diff===0?'—':(diff>0?'+':'')+fz(diff)}</div><div class="sub">expenses change</div></div>`;
-
-  // Expense log
-  const log   = document.getElementById('exp-log');
-  const empty = document.getElementById('exp-empty');
-  if (!log) return;
-
   [...log.querySelectorAll('.exp-log-row:not(.exp-log-header)')].forEach(r => r.remove());
   if (empty) empty.style.display = viewEntries.length ? 'none' : '';
-
 
   const cats = expCats();
   viewEntries.forEach(e => {
     const isIncome = e.type === 'income';
     const ci       = cats.indexOf(e.cat) % EXP_COLORS.length;
     const color    = isIncome ? 'var(--positive)' : EXP_COLORS[ci < 0 ? 0 : ci];
-    const subcatTxt = e.subcat ? ` › ${e.subcat}` : '';
-    const amtDisplay = e.curr && e.curr !== 'PLN'
-      ? `${isIncome?'+':''}${e.amount.toFixed(2)} ${e.curr}`
-      : `${isIncome?'+':''}${fz(e.amount)}`;
+    const mult = ownerMultiplier(e.owner || 'p1');
+    const dispAmt = e.amount * mult;
+    const isHalved = coupleMode && mult === 0.5;
+    const amtDisplay = (e.curr && e.curr !== 'PLN'
+      ? `${isIncome?'+':''}${dispAmt.toFixed(2)} ${e.curr}`
+      : `${isIncome?'+':''}${fz(dispAmt)}`) + (isHalved ? ' <span style="font-size:9px;color:var(--text3);">÷2</span>' : '');
+    const ownerTag = coupleMode
+      ? `<span class="owner-tag owner-${e.owner||'p1'}">${e.owner==='shared'?'Shared':e.owner==='p2'?p2Name:p1Name}</span>`
+      : '';
     const row = document.createElement('div');
     row.className = 'exp-log-row';
     row.style.background = isIncome ? '#f0fdf4' : '';
-    // Build editable selects for cat/subcat
     const catOpts = cats.map(c => `<option value="${c}"${c===e.cat?' selected':''}>${c}</option>`).join('');
     const subOpts = `<option value="">— none —</option>` + expSubcats(e.cat).map(s => `<option value="${s}"${s===e.subcat?' selected':''}>${s}</option>`).join('');
     row.innerHTML = `
@@ -4372,7 +4373,7 @@ function renderExpenses() {
       <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${e.desc}">
         <input type="text" value="${e.desc.replace(/"/g,'&quot;')}" style="width:100%;border:none;background:transparent;font-size:12px;color:var(--text2);font-family:'DM Sans',sans-serif;padding:0;outline:none;cursor:text;"
           onchange="updateExpEntry(${e.id},'desc',this.value)"
-          onclick="event.stopPropagation()">
+          onclick="event.stopPropagation()">${ownerTag}
       </span>
       <span style="display:flex;flex-direction:column;gap:2px;">
         <select style="font-size:10px;padding:2px 4px;border-radius:4px;border:1px solid var(--border);background:${color}18;color:${color};font-weight:600;" onchange="updateExpEntry(${e.id},'cat',this.value,this)">
@@ -4388,7 +4389,6 @@ function renderExpenses() {
   });
 
   renderCatBreakdown(monthExpenses, cats);
-  renderAvBudget(monthExpenses);
   renderMoMChart();
 }
 
@@ -4451,9 +4451,8 @@ function renderCatBreakdown(entries, cats) {
     const ci = cats.indexOf(cat) % EXP_COLORS.length;
     const color = EXP_COLORS[ci<0?0:ci];
     const pct = total > 0 ? amt/total*100 : 0;
-    const isActive = expCatFilter === cat;
-    return `<div class="exp-cat-bar-row" onclick="filterByCat('${cat}')" style="cursor:pointer;border-radius:6px;padding:3px 4px;transition:background .12s;${isActive?'background:'+color+'18;outline:1px solid '+color+';':''}">
-      <span class="exp-cat-bar-label" title="${cat}" style="font-weight:${isActive?'700':'400'};">${cat}</span>
+    return `<div class="exp-cat-bar-row">
+      <span class="exp-cat-bar-label" title="${cat}">${cat}</span>
       <div class="exp-cat-bar-wrap"><div class="exp-cat-bar-fill" style="width:${pct.toFixed(1)}%;background:${color};"></div></div>
       <span class="exp-cat-bar-val">${fz(amt)} <span style="color:var(--text3)">(${pct.toFixed(0)}%)</span></span>
     </div>`;
@@ -4477,7 +4476,6 @@ function renderMoMChart() {
   const data = months.map(ym => {
     const entries = expEntries.filter(e => {
       if (!e.date.startsWith(ym)) return false;
-      if (e.type === 'income') return false; // exclude income — expenses only
       return selectedCat === '__all__' || e.cat === selectedCat;
     });
     return entries.reduce((s,e)=>s+e.amount,0);
@@ -4527,28 +4525,6 @@ function renderMoMChart() {
     ctx.fillStyle='#8a96aa'; ctx.font="9px 'DM Mono'"; ctx.textAlign='center';
     ctx.fillText(labels[i], x+barW/2, H-6);
   });
-}
-
-function exportExpensesCSV() {
-  if (!expEntries.length) { alert('No transactions to export.'); return; }
-  const cols = ['Date','Type','Description','Category','Subcategory','Amount','Currency'];
-  const rows = expEntries
-    .slice().sort((a,b) => b.date.localeCompare(a.date))
-    .map(e => [
-      e.date,
-      e.type || 'expense',
-      '"' + (e.desc||'').replace(/"/g,'""') + '"',
-      '"' + (e.cat||'').replace(/"/g,'""') + '"',
-      '"' + (e.subcat||'').replace(/"/g,'""') + '"',
-      e.amount.toFixed(2),
-      e.curr || 'PLN',
-    ].join(','));
-  const csv = [cols.join(','), ...rows].join('\n');
-  const blob = new Blob(['﻿' + csv], {type:'text/csv;charset=utf-8'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `transactions_${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
 }
 
 function exportExpensesJSON() {
@@ -4672,34 +4648,12 @@ function closeSyncMenu() {
 }
 
 function collectAllData() {
-  const fixedAccounts = [];
-  document.querySelectorAll('#fixed-accounts > div').forEach(r => {
-    const inputs = r.querySelectorAll('input[type="number"]');
-    fixedAccounts.push({
-      name:    r.querySelector('input[type="text"]')?.value || '',
-      balance: inputs[0]?.value || '0',
-      rate:    inputs[1]?.value || '0',
-      curr:    r.querySelector('.curr-badge')?.textContent || 'PLN'
-    });
-  });
-  const stocks = [];
-  document.querySelectorAll('#stock-tbody tr').forEach(tr => {
-    const inputs = tr.querySelectorAll('input[type="number"]');
-    stocks.push({
-      ticker:  tr.getAttribute('data-ticker') || '',
-      shares:  inputs[0]?.value || '0',
-      avgBuy:  inputs[1]?.value || '0',
-      current: tr.querySelector('.price-cell input')?.value || '0',
-      curr:    tr.querySelector('.curr-badge')?.textContent || 'USD'
-    });
-  });
+  // Gather all localStorage-stored data plus current FX rates
   return {
-    version: 4,
+    version: 3,
     savedAt: new Date().toISOString(),
     device: navigator.userAgent.slice(0, 60),
     expenses: expEntries,
-    fixedAccounts,
-    stocks,
     fxEur: document.getElementById('fx-rate')?.value || '4.2793',
     fxUsd: document.getElementById('fx-usd')?.value  || '3.9820',
   };
@@ -4709,33 +4663,18 @@ function applyAllData(data) {
   if (!data || !data.version) { alert('Unrecognised file format.'); return; }
   let changes = [];
 
-  // Expenses/transactions
   if (Array.isArray(data.expenses) && data.expenses.length > 0) {
     if (expEntries.length > 0) {
       const existing = new Set(expEntries.map(e => e.id));
       const newOnes  = data.expenses.filter(e => !existing.has(e.id));
       expEntries = [...expEntries, ...newOnes];
-      changes.push(`${newOnes.length} new transaction(s) merged`);
+      changes.push(`${newOnes.length} new expense(s) merged`);
     } else {
       expEntries = data.expenses;
-      changes.push(`${expEntries.length} transaction(s) loaded`);
+      changes.push(`${expEntries.length} expense(s) loaded`);
     }
     saveExpenses();
     renderExpenses();
-  }
-
-  // Fixed accounts
-  if (Array.isArray(data.fixedAccounts) && data.fixedAccounts.length > 0) {
-    document.getElementById('fixed-accounts').innerHTML = '';
-    data.fixedAccounts.forEach(a => addFixedAcc(a.name, parseFloat(a.balance)||0, parseFloat(a.rate)||0, a.curr));
-    changes.push(`${data.fixedAccounts.length} fixed account(s) restored`);
-  }
-
-  // Stocks
-  if (Array.isArray(data.stocks) && data.stocks.length > 0) {
-    document.getElementById('stock-tbody').innerHTML = '';
-    data.stocks.forEach(s => addStockRow(s.ticker, parseFloat(s.shares)||0, parseFloat(s.avgBuy)||0, parseFloat(s.current)||0, s.curr));
-    changes.push(`${data.stocks.length} stock position(s) restored`);
   }
 
   if (data.fxEur) document.getElementById('fx-rate').value = data.fxEur;
@@ -4781,12 +4720,11 @@ function emailData() {
     `Finance Calculator data backup — ${date}\n\nPaste this into the Import field on any device:\n\n${preview}`
   );
 
-  // Trigger file download
-  exportAllData();
+  // Also trigger a file download as a fallback (especially useful on desktop)
+  exportAllData(); // this already stamps the backup timestamp
 
-  // Open Gmail compose in new tab (works on desktop and mobile Chrome)
-  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
-  window.open(gmailUrl, '_blank');
+  // Open mail app
+  window.location.href = `mailto:?subject=${subject}&body=${body}`;
 }
 
 function importAllData(inputEl) {
